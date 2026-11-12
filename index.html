@@ -119,6 +119,53 @@
     border: 1px solid currentColor; background: none; color: inherit; }
   #fWarn.shake { animation: shake .35s; }
   @keyframes shake { 25% { transform: translateX(-6px) } 75% { transform: translateX(6px) } }
+  .seg button { font-size: 13px; }
+  .seg button[data-f="personen"] { flex: .55; }
+  .modes { display: flex; gap: 6px; margin-bottom: 14px; }
+  .modes button { flex: 1; padding: 7px; border-radius: 20px; border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 13px; }
+  .modes button.on { background: var(--panel2); color: var(--text); }
+  #card { position: fixed; left: 12px; right: 12px; bottom: calc(112px + env(safe-area-inset-bottom)); z-index: 21;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; font-size: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5); max-height: 45vh; overflow: auto; }
+  #card small { display: block; color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .daynav { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .daynav .nav { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 20px; }
+  .daynav .dtitle { flex: 1; text-align: center; }
+  .daynav .dtitle b { display: block; font-size: 16px; }
+  .daynav .dtitle small { color: var(--muted); font-size: 13px; }
+  .allday { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .adchip { border: 1px solid; border-radius: 8px; padding: 4px 8px; font-size: 13px; }
+  .timeline { position: relative; margin-bottom: 20px; }
+  .hour { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+  .hour span { position: absolute; left: 0; top: -9px; font-size: 11px; color: var(--muted); background: var(--bg); padding-right: 6px; }
+  .block { position: absolute; border-radius: 8px; border-left: 3px solid; padding: 3px 6px; overflow: hidden; font-size: 13px; z-index: 2; }
+  .block b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .block small { color: var(--muted); font-size: 11px; }
+  .tblock { position: absolute; border-radius: 6px; font-size: 11px; color: var(--muted); padding: 2px 6px; z-index: 1; overflow: hidden;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0 6px, transparent 6px 12px); border: 1px dashed var(--line); }
+  .nowline { position: absolute; left: 40px; right: 0; height: 2px; background: #ff6b6b; z-index: 3; }
+  .nowline::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; }
+  .wrow { display: flex; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 6px; }
+  .wrow.today { border-color: var(--warn); }
+  .wrow.past { opacity: .5; }
+  .wday { width: 34px; text-align: center; flex: none; }
+  .wday b { display: block; } .wday span { font-size: 13px; color: var(--muted); } .wday i { display: block; font-style: normal; font-size: 12px; }
+  .wmain { flex: 1; min-width: 0; }
+  .wbar { position: relative; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+  .wbar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+  .wlist { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wwx { width: 34px; text-align: center; flex: none; font-size: 18px; }
+  .wwx small { display: block; font-size: 12px; color: var(--muted); }
+  .psearch { margin-bottom: 10px; }
+  #pLoad { margin-bottom: 6px; }
+  .person .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--panel2); display: flex; align-items: center;
+    justify-content: center; font-size: 14px; font-weight: 600; flex: none; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { border: 1px solid var(--line); border-radius: 16px; padding: 6px 10px; font-size: 13px; color: var(--text); text-decoration: none;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .detect button { margin-left: 6px; border-radius: 14px; padding: 3px 10px; font: inherit; font-size: 12px; border: 1px solid currentColor; background: none; color: inherit; }
+  .filebtn { display: block; text-align: center; }
   .linkbtn { background: none; border: 0; color: var(--business); font: inherit; font-size: 14px; padding: 8px 0 0; }
   .ev .meta a { color: var(--business); text-decoration: none; }
   .quiet { color: var(--warn); }
@@ -185,6 +232,7 @@
     <h1>Zentrale<small id="today"></small></h1>
     <div class="hbtns">
       <button class="iconbtn" id="speakBtn" aria-label="Vorlesen">🔊</button>
+      <button class="iconbtn" id="muteBtn" aria-label="Stumm">🔈</button>
       <button class="iconbtn" id="settingsBtn" aria-label="Einstellungen">⚙️</button>
     </div>
   </div>
@@ -193,6 +241,7 @@
     <button data-f="privat">Privat</button>
     <button data-f="business">Geschäftlich</button>
     <button data-f="gedanken" aria-label="Gedanken">💭</button>
+    <button data-f="personen" aria-label="Personen">👥</button>
     <button data-f="wecker" aria-label="Wecker">⏰</button>
   </div>
 </header>
@@ -203,14 +252,21 @@
   </div>
   <div id="calView">
     <div id="wakeCard"></div>
+    <div class="modes" id="modes"><button data-m="list">Liste</button><button data-m="day">Tag</button><button data-m="week">Woche</button></div>
     <div id="next"></div>
     <div id="list"></div>
+    <div id="calBody" hidden></div>
   </div>
   <div id="alarmView" hidden>
     <button class="nightbtn" id="nightBtn">🌙 Nachtmodus starten</button>
     <div class="nighthint">Handy ans Ladekabel, Nachtmodus an – der Bildschirm bleibt gedimmt wach und der Wecker klingelt zuverlässig.</div>
     <div id="wakeCard2"></div>
     <div id="alarmList"></div>
+  </div>
+  <div id="peopleView" hidden>
+    <input id="pSearch" class="psearch" placeholder="🔍 Person suchen …" autocomplete="off">
+    <button type="button" class="probe" id="pLoad" hidden></button>
+    <div id="peopleList"></div>
   </div>
   <div id="notesView" hidden>
     <div id="noteList"></div>
@@ -287,6 +343,15 @@
     <div id="sCalBox" hidden>
       <label>Kalender auf diesem Handy</label>
       <div id="sCalList"></div>
+      <div class="hint">Vorerst nur private Kalender. 747 bleibt außen vor – geschäftliche Termine bleiben in der App.</div>
+    </div>
+    <div id="sAlarmBox" hidden>
+      <label>Vollbild-Wecker</label>
+      <div class="hint" id="sAlarmState"></div>
+      <div class="row">
+        <div><button type="button" class="probe" id="sAlarmTest">⏰ Test in 10 s</button></div>
+        <div><button type="button" class="probe" id="sAlarmFix" hidden>Berechtigung</button></div>
+      </div>
     </div>
     <label class="chk"><input type="checkbox" id="sQuiet"> Feierabend: geschäftliche Erinnerungen stumm</label>
     <div class="row">
@@ -314,6 +379,15 @@
     </div>
     <div class="hint" id="sLocHint"></div>
     <label class="chk"><input type="checkbox" id="sSpeak"> Eingaben laut bestätigen</label>
+    <label class="chk"><input type="checkbox" id="sRoute"> Fahrzeit zu Terminen automatisch berechnen</label>
+    <label for="sTomtom">TomTom-Schlüssel (optional, für Live-Verkehr)</label>
+    <input id="sTomtom" autocomplete="off" placeholder="leer = Fahrzeit ohne Stau">
+    <label>Datensicherung</label>
+    <div class="hint" id="sBackupState"></div>
+    <div class="row">
+      <div><button type="button" class="probe" id="sExport">💾 Sichern</button></div>
+      <div><label class="probe filebtn">📂 Einspielen<input type="file" id="sImport" accept="application/json,.json" hidden></label></div>
+    </div>
     <div class="actions">
       <button type="button" id="sCancel">Abbrechen</button>
       <button type="submit" class="primary">Speichern</button>
@@ -365,6 +439,7 @@
     <label for="fTitle">Was</label>
     <input id="fTitle" required autocomplete="off" placeholder="z. B. Blankenese Abholung Bandschrank Samstag 10 Uhr">
     <div class="detect" id="fDetect" hidden></div>
+    <div class="detect" id="fPerson" hidden></div>
     <div class="row">
       <div><label for="fDate">Datum</label><input id="fDate" type="date" required></div>
       <div><label for="fTime">Uhrzeit</label><input id="fTime" type="time" required></div>
@@ -387,7 +462,7 @@
       <div style="flex:1.6"><label for="fLoc">Ort</label><input id="fLoc" autocomplete="off" placeholder="optional"></div>
       <div><label for="fTravel">Weg</label>
         <select id="fTravel">
-          <option value="0">–</option><option value="10">10 Min</option><option value="15">15 Min</option>
+          <option value="0">auto</option><option value="10">10 Min</option><option value="15">15 Min</option>
           <option value="20">20 Min</option><option value="30">30 Min</option><option value="45">45 Min</option>
           <option value="60">1 Std</option><option value="90">1,5 Std</option><option value="120">2 Std</option>
         </select></div>
@@ -409,6 +484,33 @@
 </dialog>
 
 <div id="toast"></div>
+<div id="card" hidden><div class="txt"></div><small>Antippen zum Schließen</small></div>
+
+<!-- Person -->
+<dialog id="personEd">
+  <form id="prForm" method="dialog">
+    <h2>Person</h2>
+    <label for="prName">Name</label>
+    <input id="prName" autocomplete="off">
+    <div id="prLinks" class="chips"></div>
+    <div class="hint" id="prEvents" style="white-space:pre-line"></div>
+    <label>Bereich</label>
+    <div class="ctx">
+      <label><input type="radio" name="prctx" value="privat"><span>Privat</span></label>
+      <label><input type="radio" name="prctx" value="business"><span>Geschäftlich</span></label>
+    </div>
+    <div id="prPhoneRow"><label for="prPhone">Telefon</label><input id="prPhone" type="tel" autocomplete="off"></div>
+    <label for="prAddr">Adresse (für Termine & Navigation)</label>
+    <input id="prAddr" autocomplete="off" placeholder="Straße, Ort">
+    <label for="prNote">Notizen</label>
+    <textarea id="prNote" rows="4" placeholder="Was ich mir merken will, Vorbereitung für das nächste Treffen …"></textarea>
+    <div class="actions">
+      <button type="button" class="danger" id="prDel">Entfernen</button>
+      <button type="button" id="prCancel">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
 
 <script src="capacitor.js"></script>
 <script>
@@ -584,16 +686,16 @@ function parseGerman(input) {
 
 // ---------- UI ----------
 const $ = (s) => document.querySelector(s);
-const VIEWS = ['all', 'privat', 'business', 'gedanken', 'wecker'];
+const VIEWS = ['all', 'privat', 'business', 'gedanken', 'personen', 'wecker'];
 let view = Prefs.get('view', 'all');
 if (!VIEWS.includes(view)) view = 'all';
-let filter = ['wecker', 'gedanken'].includes(view) ? 'all' : view; // Kalender-Filter
+let filter = ['wecker', 'gedanken', 'personen'].includes(view) ? 'all' : view; // Kalender-Filter
 let editingId = null;
 
 function setView(v, dir) {
   if (!VIEWS.includes(v) || v === view) return;
   view = v;
-  if (!['wecker', 'gedanken'].includes(v)) filter = v;
+  if (!['wecker', 'gedanken', 'personen'].includes(v)) filter = v;
   Prefs.set('view', v);
   const m = $('main');
   m.classList.remove('slide-l', 'slide-r');
@@ -610,7 +712,8 @@ function visibleEvents() {
 function render() {
   $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   document.querySelectorAll('#filter button').forEach((b) => b.classList.toggle('on', b.dataset.f === view));
-  $('#calView').hidden = ['wecker', 'gedanken'].includes(view);
+  $('#calView').hidden = ['wecker', 'gedanken', 'personen'].includes(view);
+  $('#peopleView').hidden = view !== 'personen';
   $('#alarmView').hidden = view !== 'wecker';
   $('#notesView').hidden = view !== 'gedanken';
   const mode = dayMode();
@@ -619,6 +722,12 @@ function render() {
   if (isQuiet()) $('#today').insertAdjacentHTML('beforeend', ' · <span class="quiet">🌙 Feierabend</span>');
   if (view === 'wecker') { renderWakeCard($('#wakeCard2')); renderAlarms(); return; }
   if (view === 'gedanken') { renderNotes(); return; }
+  if (view === 'personen') { renderPeople(); return; }
+  document.querySelectorAll('#modes button').forEach((b) => b.classList.toggle('on', b.dataset.m === calMode));
+  $('#calBody').hidden = calMode === 'list';
+  $('#next').hidden = $('#list').hidden = calMode !== 'list';
+  if (calMode === 'day') { renderDay(); return; }
+  if (calMode === 'week') { renderWeek(); return; }
   if (view === 'all') renderWakeCard($('#wakeCard')); else $('#wakeCard').innerHTML = '';
 
   const now = new Date();
@@ -664,7 +773,8 @@ function render() {
     el.querySelector('.title').textContent = e.title;
     const meta = [CONTEXTS[e.context].label];
     if (e.remind >= 0) meta.push('🔔');
-    if (e.travel) meta.push('🚗 ' + e.travel + ' Min');
+    if (travelLabel(e)) meta.push(travelLabel(e));
+    if (e.location && eventWx(e)) meta.push(wxShort(eventWx(e)));
     if (e.note) meta.push(e.note);
     el.querySelector('.meta').textContent = meta.join(' · ');
     if (e.location) {
@@ -696,7 +806,7 @@ function openEditor(ev, draft) {
   document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === ctx));
   $('#delBtn').hidden = !ev || !!(ev && ev.series);
   $('#edTitle').textContent = ev ? (ev.external ? '📅 Kalendertermin' : 'Termin bearbeiten') : 'Neuer Termin';
-  parsedTitle = null; $('#fDetect').hidden = true;
+  parsedTitle = null; $('#fDetect').hidden = true; $('#fPerson').hidden = true;
   $('#form .primary').textContent = 'Speichern';
   $('#editor').showModal();
   return checkPlausibility();
@@ -767,10 +877,25 @@ function editorStart() {
   return d && t ? new Date(`${d}T${t}`) : null;
 }
 
+function detectPerson(raw) {
+  const box = $('#fPerson');
+  const hit = personFromHit(findPersonIn(raw));
+  if (!hit) { box.hidden = true; return; }
+  box.hidden = false;
+  box.textContent = '👤 ' + hit.name;
+  const addr = (hit.addresses || [])[0];
+  if (addr && !$('#fLoc').value) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = '📍 ' + addr.split(',')[0] + ' als Ort';
+    b.onclick = () => { $('#fLoc').value = addr; b.remove(); checkPlausibility(); };
+    box.appendChild(b);
+  }
+  if (hit.context && !detectContext(raw)) document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === hit.context));
+}
 function onTitleInput() {
   clearTimeout(titleTimer);
   titleTimer = setTimeout(() => {
     const raw = $('#fTitle').value;
+    detectPerson(raw);
     const p = parseGerman(raw);
     if (!p.hasDate && !p.hasTime) { parsedTitle = null; $('#fDetect').hidden = true; checkPlausibility(); return; }
     if (p.hasDate || p.hasTime) {
@@ -944,6 +1069,7 @@ $('#add').onclick = () => (view === 'wecker' ? openAlarmEditor(null) : view === 
 
 // ---------- Sprache: Ausgabe ----------
 function say(text) {
+  if (Settings.mute) { if ($('#toast').textContent && text.includes($('#toast').textContent.replace(/^\S+ /, '').slice(0, 30))) $('#toast').className = ''; showCard(text); return; }
   if (IS_NATIVE) { NP.tts.stop().catch(() => {}).then(() => NP.tts.speak({ text, lang: 'de-DE', rate: 1.0 }).catch(() => {})); return; }
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
@@ -982,7 +1108,7 @@ $('#speakBtn').onclick = () => {
 let swReg = null;
 function notifState() { return 'Notification' in window ? Notification.permission : 'unsupported'; }
 function updateBanner() {
-  const needs = Store.events.some((e) => e.remind >= 0) && notifState() === 'default';
+  const needs = !IS_NATIVE && Store.events.some((e) => e.remind >= 0) && notifState() === 'default';
   $('#notifBanner').hidden = !needs;
 }
 async function askNotifPermission() {
@@ -1024,7 +1150,7 @@ function checkReminders() {
   for (const ev of allEvents()) {
     const s = startOf(ev).getTime();
     const silent = quiet && ev.context === 'business';
-    if (ev.travel > 0 && !ev.leaveNotified && now >= s - (ev.travel + 5) * 60000 && now < s) {
+    if (travelOf(ev) > 0 && !ev.leaveNotified && now >= s - (travelOf(ev) + 5) * 60000 && now < s) {
       ev.leaveNotified = true; Store.save(); if (!silent) fireLeave(ev);
     }
     if (ev.remind < 0 || ev.notified) continue;
@@ -1054,7 +1180,7 @@ const Alarms = {
       this.save();
     }
   },
-  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} setTimeout(() => syncNativeNotifs(), 300); },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} setTimeout(() => { syncNativeNotifs(); syncNativeAlarms(); }, 300); },
   upsert(a) {
     const i = this.list.findIndex((x) => x.id === a.id);
     if (i >= 0) this.list[i] = a; else this.list.push(a);
@@ -1311,12 +1437,15 @@ function morningBriefing() {
   const date = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   const mode = dayMode(now);
   let text = `${greet}. Heute ist ${date}${mode === 'office' ? ', ein Office-Tag' : mode === 'home' ? ', Homeoffice' : ''}. `;
+  const wx = weatherSentence(now);
+  if (wx) text += wx + ' ';
   if (!todays.length) text += 'Im Kalender steht heute nichts an.';
   else {
     const p = todays.filter((e) => e.context === 'privat').length, b = todays.length - p;
     const parts = [];
-    if (b) parts.push(b === 1 ? 'ein geschäftlicher' : b + ' geschäftliche');
-    if (p) parts.push(p === 1 ? 'ein privater' : p + ' private');
+    const NUM = ['', 'einen', 'zwei', 'drei', 'vier', 'fünf', 'sechs'];
+    if (b) parts.push(b === 1 ? 'einen geschäftlichen' : (NUM[b] || b) + ' geschäftliche');
+    if (p) parts.push(p === 1 ? 'einen privaten' : (NUM[p] || p) + ' private');
     text += `Du hast heute ${parts.join(' und ')} Termin${todays.length > 1 ? 'e' : ''}. Der erste: um ${toTimeStr(startOf(todays[0]))} ${todays[0].title}.`;
   }
   say(text);
@@ -1324,7 +1453,7 @@ function morningBriefing() {
 }
 
 function checkAlarms() {
-  if (ringing) return;
+  if (ringing || ZA) return; // in der Android-App klingelt der native Vollbild-Wecker
   const now = new Date();
   for (const a of Alarms.list) {
     if (!a.enabled) continue;
@@ -1410,7 +1539,7 @@ document.addEventListener('visibilitychange', () => {
 // ---------- Einstellungen ----------
 const Settings = Object.assign(
   { quietOn: true, quietFrom: '19:00', quietTo: '08:00', weekendOff: true, wakeBuffer: 75, speakConfirm: true,
-    officeDays: [2, 3, 4], sound: 'klassisch' },
+    officeDays: [2, 3, 4], sound: 'klassisch', mute: false, autoRoute: true, tomtomKey: '' },
   Prefs.get('settings', {})
 );
 const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
@@ -1430,6 +1559,9 @@ $('#settingsBtn').onclick = () => {
   $('#sWeekend').checked = Settings.weekendOff;
   $('#sBuffer').value = String(Settings.wakeBuffer);
   $('#sSpeak').checked = Settings.speakConfirm;
+  $('#sRoute').checked = Settings.autoRoute;
+  $('#sTomtom').value = Settings.tomtomKey || '';
+  renderAlarmStatus(); renderBackupState();
   officeSel = [...Settings.officeDays]; renderOfficeDays();
   renderCalendarSettings();
   fillSoundSelect($('#sSound'), false);
@@ -1476,7 +1608,9 @@ $('#setForm').addEventListener('submit', (e) => {
     quietOn: $('#sQuiet').checked, quietFrom: $('#sFrom').value || '19:00', quietTo: $('#sTo').value || '08:00',
     weekendOff: $('#sWeekend').checked, wakeBuffer: +$('#sBuffer').value, speakConfirm: $('#sSpeak').checked,
     officeDays: [...officeSel], sound: $('#sSound').value || 'klassisch',
+    autoRoute: $('#sRoute').checked, tomtomKey: $('#sTomtom').value.trim(),
   });
+  Routes.map = {}; Routes.save(); setTimeout(updateRoutes, 500);
   stopSound();
   Prefs.set('settings', Settings);
   $('#settings').close();
@@ -1581,7 +1715,7 @@ function wakeSuggestion() {
   const first = allEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(tmr)).sort((a, b) => startOf(a) - startOf(b))[0];
   if (!first) return null;
   const s = startOf(first);
-  const at = new Date(s.getTime() - (Settings.wakeBuffer + (first.travel || 0)) * 60000);
+  const at = new Date(s.getTime() - (Settings.wakeBuffer + travelOf(first)) * 60000);
   at.setMinutes(Math.floor(at.getMinutes() / 5) * 5, 0, 0);
   if (at < now) return null;
   const n = nextAlarm(now);
@@ -1628,6 +1762,8 @@ function eveningReview() {
   const sug = wakeSuggestion();
   if (n && toDateStr(n.at) === toDateStr(addDays(now, 1))) parts.push(`Dein Wecker steht auf ${n.alarm.time} Uhr.`);
   if (sug) parts.push(`Ich schlage vor, dich um ${toTimeStr(sug.at)} Uhr zu wecken.`);
+  const wxt = weatherSentence(addDays(now, 1), true);
+  if (wxt) parts.push(wxt);
   return parts.join(' ');
 }
 
@@ -1635,7 +1771,9 @@ function eveningReview() {
 const mapsLink = (place) => 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(place);
 async function fireLeave(ev) {
   const where = ev.location ? ` nach ${ev.location}` : '';
-  const text = `In 5 Minuten losfahren${where} – ${ev.title} um ${toTimeStr(startOf(ev))} Uhr, ${ev.travel} Minuten Weg.`;
+  const w = eventWx(ev);
+  const rain = ev.location && w && w.rain >= 50 ? ` Am Ziel ${w.rain} Prozent Regenwahrscheinlichkeit – Schirm mitnehmen.` : '';
+  const text = `In 5 Minuten losfahren${where} – ${ev.title} um ${toTimeStr(startOf(ev))} Uhr, ${travelOf(ev)} Minuten Weg.${rain}`;
   if (notifState() === 'granted' && swReg) {
     try { await swReg.showNotification('🚗 Gleich los: ' + ev.title, { body: text, tag: 'leave-' + ev.id, vibrate: [300, 150, 300] }); } catch (e) {}
   }
@@ -1653,7 +1791,9 @@ function mainClause(t) {
 function contacts() { return Prefs.get('contacts', {}); }
 function openMessage(name, text) {
   $('#mName').value = name || '';
-  $('#mPhone').value = (name && contacts()[name.toLowerCase()]) || '';
+  const person = name ? personFromHit(findPersonIn(name)) : null;
+  if (person) $('#mName').value = person.name;
+  $('#mPhone').value = (person && bestPhone(person)) || (name && contacts()[name.toLowerCase()]) || '';
   $('#mText').value = text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
   $('#mPick').hidden = !('contacts' in navigator && 'select' in navigator.contacts);
   $('#msg').showModal();
@@ -1749,6 +1889,7 @@ async function checkLocation(force) {
   lastLocCheck = Date.now();
   try {
     const p = await getPos();
+    Prefs.set('lastPos', { lat: p.lat, lon: p.lon, t: Date.now() });
     const near = (place) => place && distM(p, place) < 250 + Math.min(p.acc, 300);
     const mode = near(pl.office) ? 'office' : near(pl.home) ? 'home' : null;
     if (!mode) return; // unterwegs: Stand bleibt
@@ -1770,6 +1911,9 @@ const NP = IS_NATIVE ? {
   sr: Capacitor.registerPlugin('SpeechRecognition'),
   tts: Capacitor.registerPlugin('TextToSpeech'),
   awake: Capacitor.registerPlugin('KeepAwake'),
+  contacts: Capacitor.registerPlugin('Contacts'),
+  fs: Capacitor.registerPlugin('Filesystem'),
+  share: Capacitor.registerPlugin('Share'),
 } : null;
 
 // Termine aus dem Gerätekalender (Google privat + 747 Exchange), zugeordnet nach Bereich
@@ -1794,6 +1938,7 @@ function guessContext(c) {
 }
 const writable = (c) => c.allowsContentModifications !== false && c.isImmutable !== true;
 function writeTarget(ctx) {
+  if (ctx === 'business' && !BUSINESS_CALENDAR) return null;
   const m = Device.map();
   const chosen = Prefs.get('calWrite', {})[ctx];
   if (chosen && m[chosen] === ctx) return chosen;
@@ -1833,11 +1978,11 @@ function renderCalendarSettings() {
     const isTarget = ctx !== 'off' && writeTarget(ctx) === c.id;
     row.innerHTML = `<span class="dot" style="background:${c.color || '#888'}"></span>
       <div class="cname"><div></div><small></small></div>
-      <select><option value="off">Aus</option><option value="privat">Privat</option><option value="business">Geschäftlich</option></select>`;
+      <select><option value="off">Aus</option><option value="privat">Privat</option><option value="business"${BUSINESS_CALENDAR ? '' : ' disabled'}>Geschäftlich${BUSINESS_CALENDAR ? '' : ' (später)'}</option></select>`;
     row.querySelector('.cname div').textContent = c.title || 'Kalender';
     row.querySelector('.cname small').textContent = (c.accountName || '') + (isTarget ? ' · ✎ neue Termine' : '');
     const sel = row.querySelector('select');
-    sel.value = ctx;
+    sel.value = ctx === 'business' && !BUSINESS_CALENDAR ? 'off' : ctx;
     sel.onchange = () => { const mm = Device.map(); mm[c.id] = sel.value; Prefs.set('calMap', mm); renderCalendarSettings(); syncDeviceCalendar(true); };
     if (ctx !== 'off' && writable(c) && !isTarget) {
       row.querySelector('.cname small').insertAdjacentHTML('beforeend', ' · <a href="#">hier eintragen</a>');
@@ -1859,7 +2004,7 @@ async function syncDeviceCalendar(force) {
     const m = Device.map(), ex = Device.extras();
     const old = new Map(Device.events.map((e) => [e.id, e]));
     Device.events = (result || [])
-      .filter((e) => e.calendarId && (m[e.calendarId] === 'privat' || m[e.calendarId] === 'business'))
+      .filter((e) => e.calendarId && (m[e.calendarId] === 'privat' || (BUSINESS_CALENDAR && m[e.calendarId] === 'business')))
       .map((e) => {
         const s = new Date(e.startDate);
         const id = 'dev:' + e.id + ':' + e.startDate;
@@ -1907,7 +2052,7 @@ async function syncNativeNotifs() {
   if (!IS_NATIVE) return;
   const now = new Date(), horizon = new Date(now.getTime() + 7 * 86400000);
   const plan = [];
-  for (const a of Alarms.list) {
+  for (const a of (ZA ? [] : Alarms.list)) {
     let from = now;
     for (let k = 0; k < 7; k++) {
       const at = occurrenceAfter(a, from);
@@ -1926,10 +2071,10 @@ async function syncNativeNotifs() {
       const at = new Date(s.getTime() - ev.remind * 60000);
       if (at > now && !silent(at)) plan.push({ at, ch: 'termine', title: ev.title, body: `${toTimeStr(s)} Uhr · ${CONTEXTS[ev.context].label}` });
     }
-    if (ev.travel > 0) {
-      const at = new Date(s.getTime() - (ev.travel + 5) * 60000);
+    if (travelOf(ev) > 0) {
+      const at = new Date(s.getTime() - (travelOf(ev) + 5) * 60000);
       if (at > now && !silent(at)) plan.push({ at, ch: 'termine', title: '🚗 Gleich los: ' + ev.title,
-        body: `In 5 Min losfahren${ev.location ? ' nach ' + ev.location : ''} · ${ev.travel} Min Weg` });
+        body: `In 5 Min losfahren${ev.location ? ' nach ' + ev.location : ''} · ${travelOf(ev)} Min Weg` });
     }
   }
   plan.sort((a, b) => a.at - b.at);
@@ -1963,10 +2108,598 @@ async function cancelAlarmFollowUps() {
   } catch (e) {}
 }
 
+// =========================================================
+//  v0.7 – Stumm-Modus, Personen, Wetter & Verkehr, Tag/Woche,
+//          nativer Vollbild-Wecker, Datensicherung
+// =========================================================
+
+// 747-Kalender vorerst außen vor: nur private Gerätekalender lesen/schreiben
+const BUSINESS_CALENDAR = false;
+
+// ---------- Stumm-Modus: Text-Karte statt Sprache ----------
+let cardTimer = null, lastCardText = '';
+function showCard(text) {
+  lastCardText = text;
+  const c = $('#card');
+  c.querySelector('.txt').textContent = text;
+  c.hidden = false;
+  $('#toast').className = '';
+  clearTimeout(cardTimer);
+  cardTimer = setTimeout(() => (c.hidden = true), Math.min(30000, 6000 + text.length * 60));
+}
+$('#card').onclick = () => { $('#card').hidden = true; };
+function updateMuteBtn() {
+  $('#muteBtn').textContent = Settings.mute ? '🔇' : '🔈';
+  $('#muteBtn').setAttribute('aria-label', Settings.mute ? 'Ton an' : 'Stumm');
+}
+$('#muteBtn').onclick = () => {
+  Settings.mute = !Settings.mute;
+  Prefs.set('settings', Settings);
+  updateMuteBtn();
+  if (IS_NATIVE) NP.tts.stop().catch(() => {});
+  else if ('speechSynthesis' in window) speechSynthesis.cancel();
+  toast(Settings.mute ? '🔇 Stumm – alles kommt als Text' : '🔈 Sprachausgabe an');
+};
+
+// ---------- Wegzeit: manuell oder automatisch aus der Route ----------
+const Routes = {
+  KEY: 'zentrale.routes.v1',
+  map: {},
+  load() { try { this.map = JSON.parse(localStorage.getItem(this.KEY) || '{}'); } catch (e) {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.map)); } catch (e) {} },
+};
+function travelOf(ev) {
+  if (ev.travel > 0) return ev.travel;
+  const r = Routes.map[ev.id];
+  return r && r.min ? r.min : 0;
+}
+function travelLabel(ev) {
+  if (ev.travel > 0) return `🚗 ${ev.travel} Min`;
+  const r = Routes.map[ev.id];
+  if (!r || !r.min) return '';
+  return `🚗 ${r.traffic ? '' : '≈'}${r.min} Min` + (r.delay >= 5 ? ` (+${r.delay} Stau)` : '');
+}
+
+// ---------- Orte: Geokodierung (OpenStreetMap) ----------
+const HAMBURG = { lat: 53.5511, lon: 9.9937 };
+function homePos() { const p = Places.get(); return p.home || HAMBURG; }
+function freshPos() { const p = Prefs.get('lastPos', null); return p && Date.now() - p.t < 30 * 60000 ? p : null; }
+let geoBusy = Promise.resolve();
+async function geocode(q) {
+  if (!q) return null;
+  const key = q.trim().toLowerCase();
+  const cache = Prefs.get('geo', {});
+  if (key in cache) return cache[key];
+  // max. 1 Anfrage pro Sekunde (Nominatim-Regel)
+  const run = geoBusy.then(async () => {
+    await new Promise((r) => setTimeout(r, 1100));
+    try {
+      const h = homePos();
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=de&q=${encodeURIComponent(q)}` +
+        `&viewbox=${h.lon - 0.6},${h.lat + 0.4},${h.lon + 0.6},${h.lat - 0.4}`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const j = await res.json();
+      const v = j && j[0] ? { lat: +j[0].lat, lon: +j[0].lon } : null;
+      const c = Prefs.get('geo', {}); c[key] = v; Prefs.set('geo', c);
+      return v;
+    } catch (e) { return undefined; } // offline: später nochmal
+  });
+  geoBusy = run.catch(() => {});
+  return run;
+}
+
+// ---------- Wetter (Open-Meteo, ohne Schlüssel) ----------
+const Weather = { data: {}, busy: {} };
+const wKey = (p) => `${p.lat.toFixed(1)},${p.lon.toFixed(1)}`;
+async function loadWeather(p) {
+  const k = wKey(p);
+  const cached = Weather.data[k] || Prefs.get('wx_' + k, null);
+  if (cached && Date.now() - cached.t < 60 * 60000) { Weather.data[k] = cached; return cached; }
+  if (Weather.busy[k]) return Weather.busy[k];
+  Weather.busy[k] = (async () => {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}` +
+        '&hourly=temperature_2m,precipitation_probability,weather_code' +
+        '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+        '&timezone=Europe%2FBerlin&forecast_days=8';
+      const j = await (await fetch(url)).json();
+      const d = { t: Date.now(), hourly: j.hourly, daily: j.daily };
+      Weather.data[k] = d; Prefs.set('wx_' + k, d);
+      return d;
+    } catch (e) { return cached || null; } finally { delete Weather.busy[k]; }
+  })();
+  return Weather.busy[k];
+}
+function wxIcon(code) {
+  if (code == null) return '';
+  if (code === 0) return '☀️';
+  if (code <= 2) return '🌤';
+  if (code === 3) return '☁️';
+  if (code <= 48) return '🌫';
+  if (code <= 57) return '🌦';
+  if (code <= 67 || (code >= 80 && code <= 82)) return '🌧';
+  if (code <= 77 || code === 85 || code === 86) return '🌨';
+  return '⛈';
+}
+const WX_TEXT = (c) => c === 0 ? 'sonnig' : c <= 2 ? 'leicht bewölkt' : c === 3 ? 'bewölkt' : c <= 48 ? 'neblig' :
+  c <= 57 ? 'Nieselregen' : c <= 67 || (c >= 80 && c <= 82) ? 'Regen' : c <= 77 || c === 85 || c === 86 ? 'Schnee' : 'Gewitter';
+function wxAt(p, date) {
+  const d = Weather.data[wKey(p)];
+  if (!d || !d.hourly) return null;
+  const iso = `${toDateStr(date)}T${pad(date.getHours())}:00`;
+  const i = d.hourly.time.indexOf(iso);
+  if (i < 0) return null;
+  return { temp: Math.round(d.hourly.temperature_2m[i]), rain: d.hourly.precipitation_probability[i], code: d.hourly.weather_code[i] };
+}
+function wxDay(p, date) {
+  const d = Weather.data[wKey(p)];
+  if (!d || !d.daily) return null;
+  const i = d.daily.time.indexOf(toDateStr(date));
+  if (i < 0) return null;
+  return { min: Math.round(d.daily.temperature_2m_min[i]), max: Math.round(d.daily.temperature_2m_max[i]),
+    rain: d.daily.precipitation_probability_max[i], code: d.daily.weather_code[i] };
+}
+const eventPos = (ev) => { const c = Prefs.get('geo', {}); const g = ev.location ? c[ev.location.trim().toLowerCase()] : null; return g || homePos(); };
+function eventWx(ev) { return wxAt(eventPos(ev), startOf(ev)); }
+const wxShort = (w) => (w ? `${wxIcon(w.code)} ${w.temp}°${w.rain >= 40 ? ' ' + w.rain + '%' : ''}` : '');
+
+// Satz fürs Morgenbriefing
+function weatherSentence(date = new Date(), tomorrow = false) {
+  const p = homePos();
+  const day = wxDay(p, date);
+  if (!day) return '';
+  let s = tomorrow ? `Morgen ${day.min} bis ${day.max} Grad, ${WX_TEXT(day.code)}.` : `Draußen heute ${day.min} bis ${day.max} Grad, ${WX_TEXT(day.code)}.`;
+  if (!tomorrow) {
+    for (let h = Math.max(new Date().getHours(), 7); h <= 21; h++) {
+      const d = new Date(date); d.setHours(h, 0, 0, 0);
+      const w = wxAt(p, d);
+      if (w && w.rain >= 50) { s += ` Ab ${h} Uhr wahrscheinlich Regen – Schirm mitnehmen.`; break; }
+    }
+  } else if (day.rain >= 50) s += ' Regen ist wahrscheinlich.';
+  return s;
+}
+
+// ---------- Verkehr / Fahrzeit ----------
+let routeBusy = false;
+async function routeMinutes(from, to, departAt) {
+  const key = (Settings.tomtomKey || '').trim();
+  if (key) {
+    const url = `https://api.tomtom.com/routing/1/calculateRoute/${from.lat},${from.lon}:${to.lat},${to.lon}/json` +
+      `?traffic=true&travelMode=car&departAt=${encodeURIComponent(departAt.toISOString())}&key=${encodeURIComponent(key)}`;
+    const j = await (await fetch(url)).json();
+    const s = j.routes && j.routes[0] && j.routes[0].summary;
+    if (s) return { min: Math.ceil(s.travelTimeInSeconds / 60), delay: Math.round((s.trafficDelayInSeconds || 0) / 60), traffic: true };
+  }
+  // Ohne Schlüssel: freie Route ohne Live-Verkehr, Stadtaufschlag 20 %
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+  const j = await (await fetch(url)).json();
+  if (j.routes && j.routes[0]) return { min: Math.ceil((j.routes[0].duration / 60) * 1.2), delay: 0, traffic: false };
+  return null;
+}
+async function updateRoutes() {
+  if (routeBusy || !Settings.autoRoute) return;
+  routeBusy = true;
+  try {
+    const now = Date.now();
+    const soon = allEvents().filter((e) => e.location && !(e.travel > 0) && startOf(e) > now && startOf(e) - now < 36 * 3600000)
+      .sort((a, b) => startOf(a) - startOf(b));
+    for (const ev of soon.slice(0, 6)) {
+      const r = Routes.map[ev.id];
+      const until = startOf(ev) - now;
+      const maxAge = until < 3 * 3600000 ? 15 * 60000 : 2 * 3600000;
+      if (r && now - r.t < maxAge && r.loc === ev.location) continue;
+      const to = await geocode(ev.location);
+      if (!to) continue;
+      const from = freshPos() || homePos();
+      if (Math.abs(from.lat - to.lat) < 0.003 && Math.abs(from.lon - to.lon) < 0.003) {
+        Routes.map[ev.id] = { min: 0, t: now, loc: ev.location }; continue;
+      }
+      try {
+        const res = await routeMinutes(from, to, new Date(startOf(ev) - 30 * 60000));
+        if (res) Routes.map[ev.id] = { ...res, t: now, loc: ev.location };
+      } catch (e) {}
+    }
+    Routes.save();
+    render();
+    syncNativeNotifs();
+  } finally { routeBusy = false; }
+}
+
+// Wetter für Termine mit Ort vorladen
+async function updateWeather() {
+  const pts = [homePos()];
+  for (const e of allEvents()) {
+    if (!e.location || startOf(e) < Date.now() || startOf(e) - Date.now() > 7 * 86400000) continue;
+    const g = await geocode(e.location);
+    if (g && !pts.some((p) => wKey(p) === wKey(g))) pts.push(g);
+    if (pts.length > 5) break;
+  }
+  for (const p of pts) await loadWeather(p);
+  render();
+}
+
+// ---------- Personen & Kontakte ----------
+const People = {
+  KEY: 'zentrale.people.v1',
+  list: [],
+  load() { try { this.list = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} },
+  upsert(p) { const i = this.list.findIndex((x) => x.id === p.id); if (i >= 0) this.list[i] = p; else this.list.push(p); this.save(); },
+  remove(id) { this.list = this.list.filter((p) => p.id !== id); this.save(); },
+};
+const Contacts = {
+  KEY: 'zentrale.contacts.v1',
+  list: [],
+  load() { try { this.list = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} },
+};
+function fmtAddress(a) {
+  return [a.street, [a.postcode, a.city].filter(Boolean).join(' '), a.country && !/deutschland|germany/i.test(a.country) ? a.country : '']
+    .filter((x) => x && String(x).trim()).join(', ');
+}
+async function loadContacts() {
+  if (!IS_NATIVE) return false;
+  try {
+    const perm = await NP.contacts.requestPermissions();
+    if (perm.contacts !== 'granted') { toast('Kontaktzugriff wurde nicht erlaubt'); return false; }
+    const { contacts } = await NP.contacts.getContacts({ projection: { name: true, phones: true, emails: true, postalAddresses: true, organization: true } });
+    Contacts.list = (contacts || []).filter((c) => c.name && c.name.display).map((c) => ({
+      contactId: c.contactId, name: c.name.display,
+      phones: (c.phones || []).map((p) => p.number).filter(Boolean),
+      emails: (c.emails || []).map((e) => e.address).filter(Boolean),
+      addresses: (c.postalAddresses || []).map(fmtAddress).filter(Boolean),
+      org: (c.organization && c.organization.company) || '',
+    })).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    Contacts.save();
+    Prefs.set('contactsLoaded', Date.now());
+    return true;
+  } catch (e) { toast('Kontakte nicht lesbar'); return false; }
+}
+// Gespeicherte Person + aktuelle Kontaktdaten zusammenführen
+function personView(p) {
+  const c = p.contactId ? Contacts.list.find((x) => x.contactId === p.contactId) : null;
+  return { ...(c || {}), ...p, phones: (c && c.phones.length ? c.phones : p.phones) || [], emails: (c && c.emails.length ? c.emails : p.emails) || [],
+    addresses: p.address ? [p.address, ...((c && c.addresses) || []).filter((a) => a !== p.address)] : (c && c.addresses) || [] };
+}
+const firstName = (n) => (n || '').trim().split(/\s+/)[0];
+// Person in einem Text finden: ganzer Name, sonst eindeutiger Vorname (eigene Personen zuerst)
+function findPersonIn(text) {
+  if (!text) return null;
+  const t = ' ' + text.toLowerCase() + ' ';
+  const has = (w) => w && w.length > 2 && R(w.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(t);
+  const pool = [...People.list.map((p) => ({ kind: 'p', p })), ...Contacts.list.filter((c) => !People.list.some((p) => p.contactId === c.contactId)).map((c) => ({ kind: 'c', p: c }))];
+  const full = pool.find((x) => x.p.name.split(/\s+/).length > 1 && has(x.p.name));
+  if (full) return full;
+  for (const group of [pool.filter((x) => x.kind === 'p'), pool.filter((x) => x.kind === 'c')]) {
+    const hits = group.filter((x) => has(firstName(x.p.name)));
+    if (hits.length === 1) return hits[0];
+  }
+  return null;
+}
+function personFromHit(hit) {
+  if (!hit) return null;
+  if (hit.kind === 'p') return personView(hit.p);
+  const saved = People.list.find((p) => p.contactId === hit.p.contactId);
+  return saved ? personView(saved) : { ...hit.p, id: null };
+}
+function bestPhone(p) { return (p.phones || []).find((n) => /^(\+49|0049|01)/.test(n.replace(/\s/g, ''))) || (p.phones || [])[0] || ''; }
+
+function eventsWith(p) {
+  const name = (p.name || '').toLowerCase(), fn = firstName(p.name).toLowerCase();
+  return allEvents().filter((e) => { const t = (e.title + ' ' + (e.note || '')).toLowerCase(); return t.includes(name) || (fn.length > 2 && R(fn).test(' ' + t + ' ')); })
+    .sort((a, b) => startOf(a) - startOf(b));
+}
+
+let peopleQuery = '';
+function renderPeople() {
+  const el = $('#peopleList');
+  el.innerHTML = '';
+  $('#pLoad').hidden = !IS_NATIVE;
+  $('#pLoad').textContent = Contacts.list.length ? '↻ Kontakte aktualisieren' : '📇 Handy-Kontakte laden';
+  const q = peopleQuery.trim().toLowerCase();
+  const match = (n) => !q || n.toLowerCase().includes(q);
+  const mine = People.list.filter((p) => match(p.name)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const rest = Contacts.list.filter((c) => match(c.name) && !People.list.some((p) => p.contactId === c.contactId));
+  const row = (p, saved) => {
+    const v = saved ? personView(p) : p;
+    const r = document.createElement('div');
+    r.className = 'ev person';
+    const ctxColor = v.context ? CONTEXTS[v.context].color : 'var(--line)';
+    r.innerHTML = `<div class="bar" style="background:${ctxColor}"></div><div class="avatar"></div>
+      <div class="body"><div class="title"></div><div class="meta"></div></div>`;
+    r.querySelector('.avatar').textContent = v.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+    r.querySelector('.title').textContent = v.name;
+    const meta = [];
+    if (v.org) meta.push(v.org);
+    if (saved && v.note) meta.push('📝 ' + v.note.split('\n')[0].slice(0, 40));
+    else if (v.addresses && v.addresses[0]) meta.push('📍 ' + v.addresses[0]);
+    r.querySelector('.meta').textContent = meta.join(' · ');
+    r.onclick = () => openPerson(saved ? p : { ...p, id: null });
+    return r;
+  };
+  if (mine.length) {
+    const h = document.createElement('div'); h.className = 'day'; h.textContent = `Meine Personen · ${mine.length}`; el.appendChild(h);
+    mine.forEach((p) => el.appendChild(row(p, true)));
+  }
+  if (rest.length) {
+    const h = document.createElement('div'); h.className = 'day'; h.textContent = `Kontakte · ${rest.length}`; el.appendChild(h);
+    rest.slice(0, 150).forEach((c) => el.appendChild(row(c, false)));
+    if (rest.length > 150) { const m = document.createElement('div'); m.className = 'hint'; m.textContent = 'Weitere über die Suche finden …'; el.appendChild(m); }
+  }
+  if (!mine.length && !rest.length) {
+    el.innerHTML = q ? '<div class="empty"><b>Niemand gefunden</b>Mit + legst du eine Person an.</div>'
+      : `<div class="empty"><b>Noch keine Personen</b>${IS_NATIVE ? 'Lade deine Handy-Kontakte oder lege mit + jemanden an.' : 'Mit + legst du eine Person an.'}</div>`;
+  }
+}
+$('#pSearch').addEventListener('input', () => { peopleQuery = $('#pSearch').value; renderPeople(); });
+$('#pLoad').onclick = async () => { if (await loadContacts()) { toast(`${Contacts.list.length} Kontakte geladen`); renderPeople(); } };
+
+let editingPerson = null;
+function openPerson(p) {
+  editingPerson = p;
+  const v = p.id ? personView(p) : p;
+  $('#prName').value = v.name || '';
+  $('#prName').readOnly = !!v.contactId;
+  $('#prNote').value = v.note || '';
+  $('#prAddr').value = v.address || (v.addresses && v.addresses[0]) || '';
+  $('#prPhone').value = v.contactId ? '' : (v.phones || [])[0] || '';
+  $('#prPhoneRow').hidden = !!v.contactId;
+  document.querySelectorAll('input[name=prctx]').forEach((r) => (r.checked = r.value === (v.context || '')));
+  // Kontaktwege
+  const links = $('#prLinks'); links.innerHTML = '';
+  const add = (label, href) => { const a = document.createElement('a'); a.className = 'chip'; a.href = href; a.textContent = label; links.appendChild(a); };
+  for (const n of (v.phones || []).slice(0, 3)) {
+    add('📞 ' + n, 'tel:' + n.replace(/\s/g, ''));
+    add('💬 WhatsApp', 'https://wa.me/' + normPhone(n));
+  }
+  for (const m of (v.emails || []).slice(0, 2)) add('✉️ ' + m, 'mailto:' + m);
+  for (const a of (v.addresses || []).slice(0, 2)) add('📍 ' + a, mapsLink(a));
+  // Termine mit dieser Person
+  const evs = v.name ? eventsWith(v) : [];
+  const now = new Date();
+  const past = evs.filter((e) => startOf(e) < now), next = evs.filter((e) => startOf(e) >= now);
+  const info = [];
+  if (past.length) { const l = past[past.length - 1]; info.push(`Zuletzt gesehen: ${startOf(l).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })} – ${l.title}`); }
+  if (next.length) info.push(`Nächster Termin: ${dayLabel(startOf(next[0]))}, ${toTimeStr(startOf(next[0]))} – ${next[0].title}`);
+  $('#prEvents').textContent = info.join('\n');
+  $('#prEvents').hidden = !info.length;
+  $('#prDel').hidden = !p.id;
+  $('#personEd').showModal();
+}
+$('#prCancel').onclick = () => $('#personEd').close();
+$('#prDel').onclick = () => { if (editingPerson && editingPerson.id) People.remove(editingPerson.id); $('#personEd').close(); render(); };
+$('#prForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const p = editingPerson || {};
+  const name = $('#prName').value.trim();
+  if (!name) return;
+  const ctx = document.querySelector('input[name=prctx]:checked')?.value || '';
+  const addr = $('#prAddr').value.trim();
+  const saved = {
+    id: p.id || uid(), contactId: p.contactId || null, name,
+    context: ctx || null, note: $('#prNote').value.trim(),
+    address: addr && !(p.addresses || []).includes(addr) ? addr : (addr || ''),
+    phones: p.contactId ? [] : [$('#prPhone').value.trim()].filter(Boolean), emails: p.contactId ? [] : p.emails || [],
+  };
+  People.upsert(saved);
+  $('#personEd').close();
+  render();
+  toast(name + ' gespeichert');
+});
+
+// ---------- Tages- und Wochenansicht ----------
+let calMode = Prefs.get('calMode', 'list');
+let dayCursor = dayStart(new Date());
+document.querySelectorAll('#modes button').forEach((b) => b.addEventListener('click', () => {
+  calMode = b.dataset.m; Prefs.set('calMode', calMode);
+  if (calMode !== 'list') dayCursor = dayStart(new Date());
+  render();
+}));
+function modeIcon(d) {
+  const w = d.getDay();
+  if (w === 0 || w === 6) return '';
+  if (toDateStr(d) === toDateStr(new Date())) { const m = dayMode(d); return m === 'office' ? '🏢' : m === 'home' ? '🏠' : ''; }
+  return Settings.officeDays.includes(w) ? '🏢' : '🏠';
+}
+function renderDay() {
+  const box = $('#calBody');
+  const d = dayCursor;
+  const evs = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(d));
+  const timed = evs.filter((e) => !e.allDay), allDay = evs.filter((e) => e.allDay);
+  const wx = wxDay(homePos(), d);
+  let startH = 7, endH = 22;
+  for (const e of timed) {
+    const s = startOf(e);
+    startH = Math.min(startH, Math.max(0, s.getHours() - (travelOf(e) ? 1 : 0)));
+    endH = Math.max(endH, Math.min(24, s.getHours() + Math.ceil((e.duration || 30) / 60) + 1));
+  }
+  const PX = 52; // Pixel pro Stunde
+  const isToday = toDateStr(d) === toDateStr(new Date());
+  box.innerHTML = `<div class="daynav"><button class="nav" data-d="-1">‹</button>
+      <div class="dtitle"><b></b><small></small></div><button class="nav" data-d="1">›</button></div>
+    <div class="allday"></div>
+    <div class="timeline" style="height:${(endH - startH) * PX}px"></div>`;
+  box.querySelector('.dtitle b').textContent = (isToday ? 'Heute, ' : '') + d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'short' });
+  box.querySelector('.dtitle small').textContent = [modeIcon(d) && (modeIcon(d) === '🏢' ? '🏢 Office' : '🏠 Homeoffice'),
+    wx && `${wxIcon(wx.code)} ${wx.min}–${wx.max}°${wx.rain >= 40 ? ' · Regen ' + wx.rain + '%' : ''}`].filter(Boolean).join(' · ');
+  box.querySelectorAll('.nav').forEach((b) => (b.onclick = () => { dayCursor = addDays(dayCursor, +b.dataset.d); render(); }));
+  box.querySelector('.dtitle').onclick = () => { dayCursor = dayStart(new Date()); render(); };
+  const ad = box.querySelector('.allday');
+  for (const e of allDay) { const c = document.createElement('div'); c.className = 'adchip'; c.style.borderColor = CONTEXTS[e.context].color; c.textContent = e.title; c.onclick = () => openEditor(e); ad.appendChild(c); }
+  const tl = box.querySelector('.timeline');
+  for (let h = startH; h < endH; h++) {
+    const row = document.createElement('div');
+    row.className = 'hour'; row.style.top = (h - startH) * PX + 'px'; row.style.height = PX + 'px';
+    row.innerHTML = `<span>${pad(h)}</span>`;
+    row.onclick = () => { const s = new Date(d); s.setHours(h, 0, 0, 0); openEditor(null, { start: s }); };
+    tl.appendChild(row);
+  }
+  // Spalten für Überschneidungen
+  const items = timed.map((e) => { const s = startOf(e); const a = (s.getHours() - startH) * 60 + s.getMinutes(); return { e, a, b: a + Math.max(e.duration || 0, 25), tr: travelOf(e) }; })
+    .sort((x, y) => x.a - y.a);
+  const cols = [];
+  for (const it of items) {
+    let c = cols.findIndex((end) => end <= it.a - it.tr);
+    if (c < 0) { c = cols.length; cols.push(0); }
+    cols[c] = it.b; it.col = c;
+  }
+  const n = Math.max(1, cols.length);
+  for (const it of items) {
+    const left = `calc(46px + (100% - 50px) * ${it.col / n})`, width = `calc((100% - 50px) / ${n} - 4px)`;
+    if (it.tr) {
+      const t = document.createElement('div');
+      t.className = 'tblock'; t.style.top = ((it.a - it.tr) * PX) / 60 + 'px'; t.style.height = (it.tr * PX) / 60 + 'px';
+      t.style.left = left; t.style.width = width; t.textContent = `🚗 ${it.tr} Min`;
+      tl.appendChild(t);
+    }
+    const b = document.createElement('div');
+    b.className = 'block'; b.style.top = (it.a * PX) / 60 + 'px'; b.style.height = Math.max(22, ((it.b - it.a) * PX) / 60 - 2) + 'px';
+    b.style.left = left; b.style.width = width;
+    b.style.background = `color-mix(in srgb, ${CONTEXTS[it.e.context].color} 22%, var(--panel))`;
+    b.style.borderLeftColor = CONTEXTS[it.e.context].color;
+    const w = eventWx(it.e);
+    b.innerHTML = '<b></b><small></small>';
+    b.querySelector('b').textContent = `${toTimeStr(startOf(it.e))} ${it.e.title}`;
+    b.querySelector('small').textContent = [it.e.location && '📍 ' + it.e.location, it.e.location && wxShort(w)].filter(Boolean).join(' · ');
+    b.onclick = (ev) => { ev.stopPropagation(); openEditor(it.e); };
+    tl.appendChild(b);
+  }
+  if (isToday) {
+    const now = new Date(); const m = (now.getHours() - startH) * 60 + now.getMinutes();
+    if (m >= 0 && m <= (endH - startH) * 60) { const l = document.createElement('div'); l.className = 'nowline'; l.style.top = (m * PX) / 60 + 'px'; tl.appendChild(l); }
+  }
+}
+function renderWeek() {
+  const box = $('#calBody');
+  const monday = addDays(dayCursor, -((dayCursor.getDay() + 6) % 7));
+  const kw = (() => { const t = new Date(monday); t.setDate(t.getDate() + 3); const y = new Date(t.getFullYear(), 0, 4); return 1 + Math.round(((t - y) / 86400000 - 3 + ((y.getDay() + 6) % 7)) / 7); })();
+  box.innerHTML = `<div class="daynav"><button class="nav" data-d="-7">‹</button>
+    <div class="dtitle"><b>KW ${kw}</b><small>${monday.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })} – ${addDays(monday, 6).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}</small></div>
+    <button class="nav" data-d="7">›</button></div><div class="week"></div>`;
+  box.querySelectorAll('.nav').forEach((b) => (b.onclick = () => { dayCursor = addDays(dayCursor, +b.dataset.d); render(); }));
+  box.querySelector('.dtitle').onclick = () => { dayCursor = dayStart(new Date()); render(); };
+  const wk = box.querySelector('.week');
+  const H0 = 7, H1 = 22;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(monday, i);
+    const evs = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(d)).sort((a, b) => startOf(a) - startOf(b));
+    const wx = wxDay(homePos(), d);
+    const row = document.createElement('div');
+    row.className = 'wrow' + (toDateStr(d) === toDateStr(new Date()) ? ' today' : '') + (d < dayStart(new Date()) ? ' past' : '');
+    row.innerHTML = `<div class="wday"><b>${WD[d.getDay()].slice(0, 2)}</b><span>${d.getDate()}.</span><i>${modeIcon(d)}</i></div>
+      <div class="wmain"><div class="wbar"></div><div class="wlist"></div></div>
+      <div class="wwx">${wx ? `${wxIcon(wx.code)}<small>${wx.max}°</small>` : ''}</div>`;
+    const bar = row.querySelector('.wbar');
+    for (const e of evs.filter((e) => !e.allDay)) {
+      const s = startOf(e); const a = (s.getHours() + s.getMinutes() / 60 - H0) / (H1 - H0); const len = Math.max((e.duration || 30) / 60, 0.25) / (H1 - H0);
+      const seg = document.createElement('i'); seg.style.left = Math.max(0, a) * 100 + '%'; seg.style.width = Math.min(1 - Math.max(0, a), len) * 100 + '%';
+      seg.style.background = CONTEXTS[e.context].color; bar.appendChild(seg);
+    }
+    const ls = row.querySelector('.wlist');
+    if (!evs.length) ls.textContent = 'frei';
+    else {
+      ls.textContent = evs.slice(0, 3).map((e) => (e.allDay ? '' : toTimeStr(startOf(e)) + ' ') + e.title).join(' · ') + (evs.length > 3 ? ` · +${evs.length - 3}` : '');
+    }
+    row.onclick = () => { dayCursor = d; calMode = 'day'; Prefs.set('calMode', 'day'); render(); };
+    wk.appendChild(row);
+  }
+}
+
+// ---------- Nativer Vollbild-Wecker ----------
+const ZA = IS_NATIVE ? Capacitor.registerPlugin('ZAlarm') : null;
+let lastAlarmKey = '';
+async function syncNativeAlarms() {
+  if (!ZA) return;
+  const now = new Date(), horizon = new Date(now.getTime() + 8 * 86400000);
+  const list = [];
+  for (const a of Alarms.list) {
+    let from = now;
+    for (let k = 0; k < 8; k++) {
+      const at = occurrenceAfter(a, from);
+      if (!at || at > horizon) break;
+      list.push({ at: at.getTime(), label: a.label || 'Wecker' });
+      if (!a.days.length) break;
+      from = new Date(at.getTime() + 60000);
+    }
+  }
+  list.sort((x, y) => x.at - y.at);
+  const key = JSON.stringify(list);
+  if (key === lastAlarmKey) return;
+  try { const r = await ZA.setAlarms({ alarms: list.slice(0, 30) }); lastAlarmKey = key; nativeAlarmStatus = r; } catch (e) {}
+}
+let nativeAlarmStatus = null;
+async function renderAlarmStatus() {
+  const box = $('#sAlarmBox');
+  if (!ZA) { box.hidden = true; return; }
+  box.hidden = false;
+  try { nativeAlarmStatus = await ZA.getStatus(); } catch (e) {}
+  const s = nativeAlarmStatus || {};
+  const ok = s.canExact !== false && s.canFullScreen !== false;
+  $('#sAlarmState').textContent = ok ? '✅ Vollbild-Wecker bereit – klingelt auch bei gesperrtem Handy.'
+    : '⚠️ Für den Vollbild-Wecker fehlt eine Berechtigung.';
+  $('#sAlarmFix').hidden = ok;
+}
+async function checkNativeStop() {
+  if (!ZA) return;
+  try {
+    const { stoppedAt } = await ZA.consumeStop();
+    if (stoppedAt && Date.now() - stoppedAt < 15 * 60000) morningBriefing();
+  } catch (e) {}
+}
+
+// ---------- Datensicherung ----------
+const BACKUP_SKIP = ['zentrale.contacts.v1', 'zentrale.devcache.v1', 'zentrale.routes.v1'];
+function backupData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('zentrale.') && !BACKUP_SKIP.includes(k) && !k.startsWith('zentrale.wx_')) data[k] = localStorage.getItem(k);
+  }
+  return JSON.stringify({ app: 'Zentrale', version: 1, created: new Date().toISOString(), data }, null, 1);
+}
+async function exportBackup() {
+  const json = backupData();
+  const name = `Zentrale-Sicherung-${toDateStr(new Date())}.json`;
+  try {
+    if (IS_NATIVE) {
+      const r = await NP.fs.writeFile({ path: name, data: json, directory: 'CACHE', encoding: 'utf8' });
+      await NP.share.share({ title: 'Zentrale-Sicherung', text: 'Sicherung der Zentrale-App', url: r.uri, dialogTitle: 'Sicherung speichern (z. B. in Google Drive)' });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    }
+    Prefs.set('lastBackup', Date.now());
+    renderBackupState();
+  } catch (e) { if (!/cancel/i.test(String(e && e.message))) toast('Sicherung fehlgeschlagen'); }
+}
+async function importBackup(file) {
+  try {
+    const j = JSON.parse(await file.text());
+    if (j.app !== 'Zentrale' || !j.data) throw new Error('keine Sicherung');
+    if (!confirm(`Sicherung vom ${new Date(j.created).toLocaleString('de-DE')} einspielen? Aktuelle Daten werden ersetzt.`)) return;
+    for (const k of Object.keys(localStorage)) if (k.startsWith('zentrale.') && !BACKUP_SKIP.includes(k)) localStorage.removeItem(k);
+    for (const [k, v] of Object.entries(j.data)) localStorage.setItem(k, v);
+    location.reload();
+  } catch (e) { toast('Das ist keine gültige Zentrale-Sicherung'); }
+}
+function renderBackupState() {
+  const t = Prefs.get('lastBackup', 0);
+  const days = t ? Math.floor((Date.now() - t) / 86400000) : null;
+  $('#sBackupState').textContent = t ? `Letzte Sicherung: ${days === 0 ? 'heute' : days === 1 ? 'gestern' : 'vor ' + days + ' Tagen'}` : 'Noch keine Sicherung';
+  $('#sBackupState').className = 'hint' + (days === null || days > 14 ? ' quiet' : '');
+}
+$('#sExport').onclick = exportBackup;
+$('#sAlarmTest').onclick = async () => { try { await ZA.testRing({ label: 'Test-Wecker' }); toast('Klingelt in 10 Sekunden – Handy ruhig sperren'); } catch (e) {} };
+$('#sAlarmFix').onclick = () => ZA && ZA.openFullScreenSettings();
+$('#sImport').onchange = () => { const f = $('#sImport').files[0]; if (f) importBackup(f); $('#sImport').value = ''; };
+
 // ---------- Kleinkram ----------
 let toastTimer;
 function toast(msg, alarm) {
   const t = $('#toast');
+  // Im Stumm-Modus nicht doppelt anzeigen, was schon als Text-Karte steht
+  if (Settings.mute && lastCardText && !$('#card').hidden && (lastCardText.includes(msg.replace(/^\S+ /, '')) || msg.includes(lastCardText))) return;
   t.textContent = msg; t.className = 'show' + (alarm ? ' alarm' : '');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (t.className = ''), alarm ? 9000 : 3500);
@@ -2013,19 +2746,27 @@ document.addEventListener('touchmove', (e) => {
 }, { passive: true });
 document.addEventListener('touchend', endSwipe, { passive: true });
 document.addEventListener('touchcancel', endSwipe, { passive: true });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); checkReminders(); syncDeviceCalendar(true); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); checkReminders(); syncDeviceCalendar(true); syncNativeAlarms(); checkNativeStop(); } });
 
 // ---------- Start ----------
 Store.load();
 Alarms.load();
 Notes.load();
+People.load();
+Contacts.load();
+Routes.load();
+updateMuteBtn();
 if (IS_NATIVE) Device.loadCache();
 render();
 syncDeviceCalendar(true);
 syncNativeNotifs();
+syncNativeAlarms();
+checkNativeStop();
+updateWeather().then(updateRoutes);
+setInterval(updateWeather, 15 * 60000);
 updateBanner();
 checkReminders();
-setInterval(() => { checkReminders(); render(); checkLocation(); syncDeviceCalendar(); syncNativeNotifs(); }, 20000);
+setInterval(() => { checkReminders(); render(); checkLocation(); syncDeviceCalendar(); syncNativeNotifs(); updateRoutes(); }, 20000);
 checkLocation();
 setInterval(checkAlarms, 3000);
 checkAlarms();

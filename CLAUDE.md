@@ -17,9 +17,11 @@ Entwickelt wird überwiegend vom Handy aus über Claude Code.
   Office-Tage in `Settings.officeDays`, `dayMode()` → 'office' | 'home' | null; Anzeige im Header und im Morgenbriefing.
 
 ## Ansichten
-Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ Wecker. ⚙️ Einstellungen im Header.
+Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · 👥 Personen · ⏰ Wecker.
+Kalender-Ansichten umschaltbar: Liste · Tag (Zeitleiste mit Wegzeit-Blöcken) · Woche (`calMode`).
+Header: 🔊 vorlesen · 🔈/🔇 Stumm-Modus (`Settings.mute` → `showCard()` statt Sprache) · ⚙️ Einstellungen.
 
-## Architektur (v0.6 – Web + Android)
+## Architektur (v0.7 – Web + Android)
 - **Android-App (Capacitor 8):** `android/`, appId `de.martinkupfer.zentrale`. Web-Dateien werden per
   `scripts/build-web.js` nach `www/` kopiert, `npx cap sync android`. APK baut `.github/workflows/android.yml` bei jedem
   Push und hängt sie als Release `apk-latest` an (Zentrale.apk). Signierschlüssel `android/app/zentrale.keystore`
@@ -28,8 +30,14 @@ Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ 
 - Gerätekalender (`Device`): liest alle Kalender des Handys (Google privat + 747 Exchange via ActiveSync), Zuordnung
   Kalender → privat/geschäftlich/aus in ⚙️ (`Prefs.calMap`). Neue Termine landen im Kalender des Bereichs
   (`writeTarget`), Serientermine nur Wegzeit lokal (`devExtras`). `allEvents()` = lokale + Kalendertermine.
-- Native Benachrichtigungen (`syncNativeNotifs`): Wecker (+ Nachklingeln 2/4/6 Min, Ton `res/raw/wecker.wav`),
-  Erinnerungen lokaler Termine, Losfahren – für 7 Tage im Voraus geplant, auch bei geschlossener App.
+- **747-Kalender vorerst aus** (`BUSINESS_CALENDAR = false`): nur private Gerätekalender werden gelesen/beschrieben,
+  geschäftliche Termine bleiben lokal in der App.
+- **Nativer Vollbild-Wecker** (eigenes Plugin `ZAlarm`, Java in `android/app/src/main/java/de/martinkupfer/zentrale/`):
+  `AlarmScheduler` (AlarmManager.setAlarmClock, Neuplanung nach Neustart via `BootReceiver`) → `AlarmReceiver` →
+  `AlarmService` (Vordergrund-Dienst systemExempted, Dauerton `res/raw/wecker.wav` lauter werdend, Vibration,
+  Vollbild-Benachrichtigung) → `AlarmActivity` (über Sperrbildschirm, Schlummern/Aus, Umdrehen = Aus).
+  Web plant über `syncNativeAlarms()`; nach „Aus“ liefert `ZA.consumeStop()` den Zeitpunkt → Morgenbriefing.
+- Native Benachrichtigungen (`syncNativeNotifs`): Erinnerungen lokaler Termine, Losfahren – für 7 Tage im Voraus geplant, auch bei geschlossener App.
 - Web-Version (GitHub Pages) bleibt parallel: Pages-Workflow veröffentlicht nur `_site` (ohne android/).
 - Web-App-Kern, kein Build-Schritt: `index.html` (UI + Logik), `sw.js` (Offline + Benachrichtigungen), `manifest.json`.
 - Daten lokal in `localStorage` über das `Store`-Objekt. Der Store ist bewusst gekapselt,
@@ -41,6 +49,14 @@ Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ 
   (📍 im Header). Nachtmodus komplett schwarz (Uhr nur bei Antippen), Wake Lock bleibt aktiv, Akku-Warnung ohne Ladekabel.
 - Wecktöne: synthetisch (Klassisch, Sanfte Glocke, Marimba, Aufsteigend) über Web Audio, oder eigene Datei (IndexedDB
   `SoundDB`). Standardton in Settings, pro Wecker überschreibbar; werden langsam lauter.
+- **Personen** (`People`, eigene Notizen/Bereich/Adresse) + **Handy-Kontakte** (`Contacts`, Plugin
+  @capacitor-community/contacts, Cache). `findPersonIn()` erkennt Personen in Titeln/Nachrichten → Adresse als Ort,
+  Telefonnummer für WhatsApp/SMS, „zuletzt gesehen“ aus Terminen.
+- **Wetter** (Open-Meteo, ohne Schlüssel; `loadWeather`, `wxAt`, `wxDay`) im Morgenbriefing, Abendrückblick,
+  an Terminen mit Ort, Tages-/Wochenansicht. **Geokodierung** über Nominatim (1 Anfrage/s, Cache `Prefs.geo`).
+- **Fahrzeit** (`updateRoutes`, `travelOf(ev)`): manuelle Wegzeit hat Vorrang, sonst automatisch – mit TomTom-Schlüssel
+  (⚙️) inkl. Live-Verkehr, sonst OSRM ohne Verkehr (+20 %, „≈“). Von aktuellem Standort (`Prefs.lastPos`) oder Zuhause.
+- **Datensicherung**: alle `zentrale.*`-Daten als JSON exportieren (Android: Teilen → z. B. Drive) / einspielen.
 - `Notes`: geparkte Gedanken (Sprachnotiz, Bereich, erledigt, → Termin umwandeln).
 - `Settings`: Feierabend-Zeiten (geschäftliche Erinnerungen stumm), Wochenende frei, Aufsteh-Vorlauf, Sprachbestätigung.
 - Verknüpfungen: Weckvorschlag aus erstem Termin morgen (Vorlauf + Wegzeit), Abendrückblick (🔊 ab 18 Uhr, beim
@@ -60,7 +76,8 @@ Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ 
    (Termine verstehen, Bereich erkennen, Gedanken sortieren), Sonnet 5.5 für Morgenbriefing/Abendrückblick;
    geschätzt ~1,50 $/Monat. API-Schlüssel nur lokal in der App, Kostenzähler in ⚙️, pro Bereich steuerbar, was Claude sieht.
 3. ✅ Android-APK (Capacitor) mit Gerätekalender (privat + 747), nativen Benachrichtigungen, nativer Sprache
-3b. Echter Vollbild-Wecker (Klingeln bei gesperrtem Handy), Standort im Hintergrund
+3b. ✅ Vollbild-Wecker, Personen/Kontakte, Wetter & Fahrzeit, Tag/Woche, Stumm-Modus, Datensicherung (v0.7)
+3c. Standort im Hintergrund; 747-Kalender wieder zuschalten (`BUSINESS_CALENDAR`)
 5. Weitere Kanäle (Mail, Messenger) → „Nervensystem“
 
 ## Bekannte Grenzen
