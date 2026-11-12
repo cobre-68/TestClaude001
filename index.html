@@ -109,6 +109,16 @@
   .calrow .cname small { color: var(--muted); font-size: 12px; }
   .calrow .cname a { color: var(--business); }
   .calrow select { width: auto; padding: 8px; font-size: 14px; }
+  .detect { font-size: 13px; color: var(--privat); margin-top: 6px; }
+  #fWarn { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .warnrow { font-size: 14px; border-radius: 10px; padding: 9px 11px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    background: rgba(122,162,255,.08); border: 1px solid rgba(122,162,255,.3); }
+  .warnrow.warn { background: rgba(255,176,87,.08); border-color: rgba(255,176,87,.4); color: var(--warn); }
+  .warnrow.bad { background: rgba(255,107,107,.1); border-color: rgba(255,107,107,.5); color: #ff8b8b; }
+  .warnrow button { margin-left: auto; border-radius: 16px; padding: 6px 12px; font: inherit; font-size: 13px;
+    border: 1px solid currentColor; background: none; color: inherit; }
+  #fWarn.shake { animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-6px) } 75% { transform: translateX(6px) } }
   .linkbtn { background: none; border: 0; color: var(--business); font: inherit; font-size: 14px; padding: 8px 0 0; }
   .ev .meta a { color: var(--business); text-decoration: none; }
   .quiet { color: var(--warn); }
@@ -353,7 +363,8 @@
   <form id="form" method="dialog">
     <h2 id="edTitle">Neuer Termin</h2>
     <label for="fTitle">Was</label>
-    <input id="fTitle" required autocomplete="off">
+    <input id="fTitle" required autocomplete="off" placeholder="z. B. Blankenese Abholung Bandschrank Samstag 10 Uhr">
+    <div class="detect" id="fDetect" hidden></div>
     <div class="row">
       <div><label for="fDate">Datum</label><input id="fDate" type="date" required></div>
       <div><label for="fTime">Uhrzeit</label><input id="fTime" type="time" required></div>
@@ -388,6 +399,7 @@
     </div>
     <label for="fNote">Notiz</label>
     <textarea id="fNote" rows="2"></textarea>
+    <div id="fWarn" hidden></div>
     <div class="actions">
       <button type="button" class="danger" id="delBtn">Löschen</button>
       <button type="button" id="cancelBtn">Abbrechen</button>
@@ -448,7 +460,7 @@ function dayLabel(d) {
   const diff = Math.round((dayStart(d) - dayStart(new Date())) / 86400000);
   if (diff === 0) return 'Heute';
   if (diff === 1) return 'Morgen';
-  if (diff === 2) return 'Übermorgen';
+  if (diff > 1 && diff < 7) return WD[d.getDay()];
   return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 function relIn(ms) {
@@ -550,6 +562,7 @@ function parseGerman(input) {
   if (!date && has(R('nächste\\s+woche'))) date = addDays(today, 7 - ((now.getDay() + 6) % 7));
   cut(R('nächste\\s+woche'));
 
+  const hasDate = !!date, hasTime = hh !== null;
   // Keine Angaben → nächste volle Stunde
   if (hh === null && !date) { const n = new Date(now.getTime() + 3600000); date = dayStart(n); hh = n.getHours(); }
   if (!date) {
@@ -566,7 +579,7 @@ function parseGerman(input) {
   title = title.charAt(0).toUpperCase() + title.slice(1);
 
   const start = new Date(date); start.setHours(hh, mm, 0, 0);
-  return { title, start, context, remind, wake };
+  return { title, start, context, remind, wake, hasDate, hasTime };
 }
 
 // ---------- UI ----------
@@ -683,12 +696,22 @@ function openEditor(ev, draft) {
   document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === ctx));
   $('#delBtn').hidden = !ev || !!(ev && ev.series);
   $('#edTitle').textContent = ev ? (ev.external ? '📅 Kalendertermin' : 'Termin bearbeiten') : 'Neuer Termin';
+  parsedTitle = null; $('#fDetect').hidden = true;
+  $('#form .primary').textContent = 'Speichern';
   $('#editor').showModal();
+  return checkPlausibility();
 }
 
 $('#form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const orig = editingId ? allEvents().find((x) => x.id === editingId) : null;
+  if (editorStart() < new Date() && !pastAck && !(orig && orig.series)) {
+    checkPlausibility(); pastAck = true;
+    $('#form .primary').textContent = 'Trotzdem speichern';
+    $('#fWarn').classList.remove('shake'); void $('#fWarn').offsetWidth; $('#fWarn').classList.add('shake');
+    return;
+  }
+  if (parsedTitle) $('#fTitle').value = parsedTitle;
   const ctx = document.querySelector('input[name=ctx]:checked')?.value || 'privat';
   const ev = {
     id: editingId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
@@ -733,6 +756,101 @@ $('#delBtn').onclick = async () => {
   } else if (editingId) { Store.remove(editingId); toast('Gelöscht'); }
   render();
 };
+
+// ---------- Mitdenken im Termin-Editor ----------
+// 1) Datum/Uhrzeit aus dem diktierten oder getippten Titel erkennen
+// 2) Plausibilität prüfen: Vergangenheit, Überschneidungen, Wegzeit, Arbeitszeit, Nachtzeit
+let parsedTitle = null, pastAck = false, titleTimer = null;
+
+function editorStart() {
+  const d = $('#fDate').value, t = $('#fTime').value;
+  return d && t ? new Date(`${d}T${t}`) : null;
+}
+
+function onTitleInput() {
+  clearTimeout(titleTimer);
+  titleTimer = setTimeout(() => {
+    const raw = $('#fTitle').value;
+    const p = parseGerman(raw);
+    if (!p.hasDate && !p.hasTime) { parsedTitle = null; $('#fDetect').hidden = true; checkPlausibility(); return; }
+    if (p.hasDate || p.hasTime) {
+      $('#fDate').value = toDateStr(p.start);
+      $('#fTime').value = toTimeStr(p.start);
+    }
+    if (p.context) document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === p.context));
+    parsedTitle = p.title;
+    $('#fDetect').hidden = false;
+    $('#fDetect').textContent = `🗓 Erkannt: ${dayLabel(p.start)}, ${toTimeStr(p.start)} Uhr` +
+      (p.context ? ' · ' + CONTEXTS[p.context].label : '') + ` → Titel: „${p.title}“`;
+    checkPlausibility();
+  }, 350);
+}
+
+function checkPlausibility() {
+  pastAck = false;
+  const box = $('#fWarn');
+  const s = editorStart();
+  if (!s || isNaN(s)) { box.hidden = true; return []; }
+  const now = new Date();
+  const dur = +$('#fDur').value || 0;
+  const end = new Date(s.getTime() + dur * 60000);
+  const travel = +$('#fTravel').value || 0;
+  const ctx = document.querySelector('input[name=ctx]:checked')?.value;
+  const msgs = [];
+
+  // Vergangenheit
+  if (s < now) {
+    const mins = Math.round((now - s) / 60000);
+    const ago = mins < 60 ? `${mins} Min` : mins < 1440 ? `${Math.round(mins / 60)} Std` : `${Math.round(mins / 1440)} Tagen`;
+    let fix = addDays(s, 1);
+    msgs.push({ level: 'bad', text: `Liegt in der Vergangenheit (vor ${ago}).`,
+      action: { label: `Auf ${dayLabel(fix)} ${toTimeStr(fix)}`, run: () => { $('#fDate').value = toDateStr(fix); checkPlausibility(); } } });
+  } else if (s - now < 30 * 60000 && travel && s - now < travel * 60000) {
+    msgs.push({ level: 'warn', text: `Mit ${travel} Min Weg kaum noch zu schaffen.` });
+  }
+
+  // Nachts: vermutlich 10 statt 22 Uhr gemeint (oder umgekehrt)
+  const h = s.getHours();
+  if (h >= 0 && h < 6) {
+    const alt = new Date(s); alt.setHours(h + 12);
+    msgs.push({ level: 'warn', text: `${toTimeStr(s)} Uhr ist mitten in der Nacht.`,
+      action: { label: `${toTimeStr(alt)} Uhr?`, run: () => { $('#fTime').value = toTimeStr(alt); checkPlausibility(); } } });
+  }
+
+  // Überschneidungen mit anderen Terminen
+  const others = allEvents().filter((e) => e.id !== editingId && !e.allDay);
+  for (const e of others) {
+    const es = startOf(e), ee = new Date(es.getTime() + Math.max(e.duration || 0, 1) * 60000);
+    if (es < end && ee > s && dur > 0) {
+      msgs.push({ level: 'warn', text: `Überschneidet sich mit „${e.title}“ (${toTimeStr(es)}–${toTimeStr(ee)}, ${CONTEXTS[e.context].label}).` });
+    } else if (travel && ee <= s && s - ee < travel * 60000) {
+      msgs.push({ level: 'warn', text: `Knapp: „${e.title}“ endet ${toTimeStr(ee)}, mit ${travel} Min Weg bist du erst ${toTimeStr(new Date(ee.getTime() + travel * 60000))} da.` });
+    }
+  }
+
+  // Geschäftlich außerhalb der Arbeitszeit / am Wochenende
+  if (ctx === 'business' && isQuiet(s)) {
+    msgs.push({ level: 'info', text: (s.getDay() % 6 === 0 ? 'Geschäftlich am Wochenende' : 'Geschäftlich nach Feierabend') + ' – Erinnerung bleibt stumm.' });
+  }
+
+  box.innerHTML = '';
+  for (const m of msgs) {
+    const row = document.createElement('div');
+    row.className = 'warnrow ' + m.level;
+    row.textContent = (m.level === 'bad' ? '⚠️ ' : m.level === 'warn' ? '⚡ ' : 'ℹ️ ') + m.text;
+    if (m.action) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = m.action.label; b.onclick = m.action.run;
+      row.appendChild(b);
+    }
+    box.appendChild(row);
+  }
+  box.hidden = !msgs.length;
+  return msgs;
+}
+['#fDate', '#fTime', '#fDur', '#fTravel'].forEach((id) => $(id).addEventListener('change', checkPlausibility));
+document.querySelectorAll('input[name=ctx]').forEach((r) => r.addEventListener('change', checkPlausibility));
+$('#fTitle').addEventListener('input', onTitleInput);
 
 // ---------- Sprache: Eingabe ----------
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -810,6 +928,11 @@ $('#voiceOk').onclick = () => {
     toast(msg); say(msg);
     return;
   }
+  const warn = () => {
+    const bad = [...document.querySelectorAll('#fWarn .warnrow')].map((r) => r.firstChild.textContent.replace(/^\S+\s/, ''));
+    if (bad.length && Settings.speakConfirm) say('Achtung: ' + bad[0]);
+  };
+  setTimeout(warn, 50);
   openEditor(null, {
     title: p.title, start: p.start,
     context: p.context || undefined,

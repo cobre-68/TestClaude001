@@ -46,6 +46,9 @@ Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ 
 - Verknüpfungen: Weckvorschlag aus erstem Termin morgen (Vorlauf + Wegzeit), Abendrückblick (🔊 ab 18 Uhr, beim
   Nachtmodus), Losfahr-Erinnerung (Ort + Wegzeit, Maps-Link), „Sag X, dass …“ → WhatsApp/SMS (Nummern in Prefs.contacts).
 - Sprach-Routing in `#voiceOk`: Gedanke → Nachricht → Wecker → Termin.
+- Mitdenken im Editor: Datum/Uhrzeit/Bereich werden live aus dem (diktierten) Titel erkannt und herausgelöst
+  (`onTitleInput`, `parsedTitle`); `checkPlausibility()` warnt bei Vergangenheit (Speichern erst nach Bestätigung),
+  Nachtzeit (10 statt 22 Uhr?), Überschneidungen, zu knapper Wegzeit, Geschäftlichem nach Feierabend.
 - `parseGerman()` versteht freie Sätze wie „Freitag 14:30 Meeting mit Rikke geschäftlich“.
 - Hosting: GitHub Pages über `.github/workflows/pages.yml` (Deploy bei jedem Push auf `main`).
 
