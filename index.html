@@ -104,7 +104,10 @@
   .ev .meta a { color: var(--business); text-decoration: none; }
   .quiet { color: var(--warn); }
   .seg button[data-f="wecker"].on { color: var(--warn); }
-  main { touch-action: pan-y; }
+  html, body, main { touch-action: pan-y; }
+  main { min-height: calc(100vh - 140px); will-change: transform; }
+  main.dragging { transition: none; }
+  main.snap { transition: transform .2s ease-out; }
   main.slide-l { animation: slideL .22s ease-out; }
   main.slide-r { animation: slideR .22s ease-out; }
   @keyframes slideL { from { transform: translateX(40px); opacity: .3 } to { transform: none; opacity: 1 } }
@@ -1354,20 +1357,43 @@ document.querySelectorAll('#filter button').forEach((b) =>
   b.addEventListener('click', () => setView(b.dataset.f, VIEWS.indexOf(b.dataset.f) - VIEWS.indexOf(view)))
 );
 
-// Wischen zwischen Alle / Privat / Geschäftlich / Wecker
+// Wischen zwischen den Ansichten – auf dem ganzen Bildschirm, Inhalt folgt dem Finger
 let touch = null;
-$('main').addEventListener('touchstart', (e) => {
-  const t = e.touches[0]; touch = { x: t.clientX, y: t.clientY };
-}, { passive: true });
-$('main').addEventListener('touchend', (e) => {
+const swipeBlocked = (el) => el.closest && el.closest('dialog, .overlay, input, textarea, select, .switch');
+function dragTo(dx) {
+  const m = $('main');
+  const i = VIEWS.indexOf(view);
+  const edge = (dx > 0 && i === 0) || (dx < 0 && i === VIEWS.length - 1);
+  m.style.transform = `translateX(${dx * (edge ? 0.15 : 0.45)}px)`;
+}
+function endSwipe() {
   if (!touch) return;
-  const t = e.changedTouches[0];
-  const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+  const { dx, dy, horiz } = touch;
   touch = null;
-  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  const m = $('main');
+  m.classList.remove('dragging'); m.classList.add('snap'); m.style.transform = '';
+  setTimeout(() => m.classList.remove('snap'), 220);
+  if (!horiz || Math.abs(dx) < 50) return;
   const i = VIEWS.indexOf(view) + (dx < 0 ? 1 : -1);
   if (i >= 0 && i < VIEWS.length) setView(VIEWS[i], dx < 0 ? 1 : -1);
+}
+document.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1 || swipeBlocked(e.target)) { touch = null; return; }
+  const t = e.touches[0];
+  touch = { x: t.clientX, y: t.clientY, dx: 0, dy: 0, horiz: null };
 }, { passive: true });
+document.addEventListener('touchmove', (e) => {
+  if (!touch) return;
+  const t = e.touches[0];
+  touch.dx = t.clientX - touch.x; touch.dy = t.clientY - touch.y;
+  if (touch.horiz === null && (Math.abs(touch.dx) > 12 || Math.abs(touch.dy) > 12)) {
+    touch.horiz = Math.abs(touch.dx) > Math.abs(touch.dy) * 1.2;
+    if (touch.horiz) $('main').classList.add('dragging');
+  }
+  if (touch.horiz) dragTo(touch.dx);
+}, { passive: true });
+document.addEventListener('touchend', endSwipe, { passive: true });
+document.addEventListener('touchcancel', endSwipe, { passive: true });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); checkReminders(); } });
 
 // ---------- Start ----------
