@@ -102,6 +102,13 @@
   .chk input { width: 22px; height: 22px; flex: none; accent-color: var(--warn); }
   .probe { width: 100%; padding: 11px 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2);
     color: var(--text); font: inherit; font-size: 14px; white-space: nowrap; }
+  .calrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .calrow .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .calrow .cname { flex: 1; min-width: 0; }
+  .calrow .cname div { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .calrow .cname small { color: var(--muted); font-size: 12px; }
+  .calrow .cname a { color: var(--business); }
+  .calrow select { width: auto; padding: 8px; font-size: 14px; }
   .linkbtn { background: none; border: 0; color: var(--business); font: inherit; font-size: 14px; padding: 8px 0 0; }
   .ev .meta a { color: var(--business); text-decoration: none; }
   .quiet { color: var(--warn); }
@@ -267,6 +274,10 @@
 <dialog id="settings">
   <form id="setForm" method="dialog">
     <h2>Einstellungen</h2>
+    <div id="sCalBox" hidden>
+      <label>Kalender auf diesem Handy</label>
+      <div id="sCalList"></div>
+    </div>
     <label class="chk"><input type="checkbox" id="sQuiet"> Feierabend: geschäftliche Erinnerungen stumm</label>
     <div class="row">
       <div><label for="sFrom">Ab</label><input id="sFrom" type="time"></div>
@@ -387,6 +398,7 @@
 
 <div id="toast"></div>
 
+<script src="capacitor.js"></script>
 <script>
 /* =========================================================
    Zentrale – v0.1
@@ -408,7 +420,7 @@ const Store = {
     try { this.events = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) { /* Speicher nicht verfügbar */ }
     return this.events;
   },
-  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.events)); } catch (e) {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.events)); } catch (e) {} setTimeout(() => syncNativeNotifs(), 300); },
   upsert(ev) {
     const i = this.events.findIndex((e) => e.id === ev.id);
     if (i >= 0) this.events[i] = ev; else this.events.push(ev);
@@ -577,7 +589,7 @@ function setView(v, dir) {
 }
 
 function visibleEvents() {
-  return Store.events
+  return allEvents()
     .filter((e) => filter === 'all' || e.context === filter)
     .sort((a, b) => startOf(a) - startOf(b));
 }
@@ -669,12 +681,14 @@ function openEditor(ev, draft) {
   $('#fTravel').value = String(d.travel || 0);
   const ctx = d.context || (filter !== 'all' ? filter : Prefs.get('lastCtx', 'privat'));
   document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === ctx));
-  $('#delBtn').hidden = !ev;
+  $('#delBtn').hidden = !ev || !!(ev && ev.series);
+  $('#edTitle').textContent = ev ? (ev.external ? '📅 Kalendertermin' : 'Termin bearbeiten') : 'Neuer Termin';
   $('#editor').showModal();
 }
 
-$('#form').addEventListener('submit', (e) => {
+$('#form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const orig = editingId ? allEvents().find((x) => x.id === editingId) : null;
   const ctx = document.querySelector('input[name=ctx]:checked')?.value || 'privat';
   const ev = {
     id: editingId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
@@ -689,9 +703,20 @@ $('#form').addEventListener('submit', (e) => {
     notified: false,
     leaveNotified: false,
   };
-  Store.upsert(ev);
-  Prefs.set('lastCtx', ctx);
   $('#editor').close();
+  if (orig && orig.series) {
+    // Serientermin: nur die Wegzeit merken, den Termin selbst im Kalender ändern
+    const ex = Device.extras(); ex[orig.devId] = { travel: ev.travel }; Prefs.set('devExtras', ex);
+    orig.travel = ev.travel; render(); syncNativeNotifs();
+    toast('Wegzeit gespeichert – Serientermine bitte im Kalender ändern');
+    return;
+  }
+  let inDevice = false;
+  if (IS_NATIVE && (orig ? orig.external : true)) {
+    try { inDevice = await saveToDevice({ ...ev, devId: orig && orig.devId }); } catch (err) { inDevice = false; }
+  }
+  if (!inDevice) Store.upsert(ev);
+  Prefs.set('lastCtx', ctx);
   render();
   const s = startOf(ev);
   const msg = `${ev.title}, ${dayLabel(s)} um ${toTimeStr(s)} Uhr, ${CONTEXTS[ctx].label.toLowerCase()}.`;
@@ -700,16 +725,34 @@ $('#form').addEventListener('submit', (e) => {
   if (ev.remind >= 0) askNotifPermission();
 });
 $('#cancelBtn').onclick = () => $('#editor').close();
-$('#delBtn').onclick = () => {
-  if (editingId) { Store.remove(editingId); toast('Gelöscht'); }
-  $('#editor').close(); render();
+$('#delBtn').onclick = async () => {
+  const orig = editingId ? allEvents().find((x) => x.id === editingId) : null;
+  $('#editor').close();
+  if (orig && orig.external) {
+    try { await NP.cal.deleteEvent({ id: orig.devId }); await syncDeviceCalendar(true); toast('Aus dem Kalender gelöscht'); } catch (e) { toast('Löschen fehlgeschlagen'); }
+  } else if (editingId) { Store.remove(editingId); toast('Gelöscht'); }
+  render();
 };
 
 // ---------- Sprache: Eingabe ----------
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 
+async function startListeningNative() {
+  const ta = $('#transcript');
+  ta.value = '';
+  try {
+    const perm = await NP.sr.requestPermissions();
+    if (perm.speechRecognition && perm.speechRecognition !== 'granted') throw new Error('perm');
+    const r = await NP.sr.start({ language: 'de-DE', maxResults: 1, prompt: 'Sprich jetzt …', popup: true, partialResults: false });
+    ta.value = (r.matches && r.matches[0]) || '';
+  } catch (e) { /* abgebrochen */ }
+  $('#voiceTitle').textContent = ta.value ? 'Stimmt das so?' : 'Sag oder tippe es';
+  $('#voiceHint').textContent = ta.value ? '' : 'Nicht verstanden – „Nochmal“ oder schreiben.';
+  $('#voice').showModal();
+}
 function startListening() {
+  if (IS_NATIVE) return startListeningNative();
   const ta = $('#transcript');
   ta.value = '';
   $('#voice').showModal();
@@ -778,6 +821,7 @@ $('#add').onclick = () => (view === 'wecker' ? openAlarmEditor(null) : view === 
 
 // ---------- Sprache: Ausgabe ----------
 function say(text) {
+  if (IS_NATIVE) { NP.tts.stop().catch(() => {}).then(() => NP.tts.speak({ text, lang: 'de-DE', rate: 1.0 }).catch(() => {})); return; }
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -854,7 +898,7 @@ async function fire(ev) {
 function checkReminders() {
   const now = Date.now();
   const quiet = isQuiet();
-  for (const ev of Store.events) {
+  for (const ev of allEvents()) {
     const s = startOf(ev).getTime();
     const silent = quiet && ev.context === 'business';
     if (ev.travel > 0 && !ev.leaveNotified && now >= s - (ev.travel + 5) * 60000 && now < s) {
@@ -887,7 +931,7 @@ const Alarms = {
       this.save();
     }
   },
-  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} setTimeout(() => syncNativeNotifs(), 300); },
   upsert(a) {
     const i = this.list.findIndex((x) => x.id === a.id);
     if (i >= 0) this.list[i] = a; else this.list.push(a);
@@ -1116,6 +1160,7 @@ async function ring(a) {
 }
 function stopRing(withBriefing) {
   stopFlipWatch();
+  cancelAlarmFollowUps();
   stopSound();
   if (navigator.vibrate) navigator.vibrate(0);
   $('#ring').hidden = true;
@@ -1138,7 +1183,7 @@ function morningBriefing() {
   const now = new Date();
   const h = now.getHours();
   const greet = h < 11 ? 'Guten Morgen' : h < 17 ? 'Hallo' : 'Guten Abend';
-  const todays = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(now) && startOf(e) >= now)
+  const todays = allEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(now) && startOf(e) >= now)
     .sort((a, b) => startOf(a) - startOf(b));
   const date = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   const mode = dayMode(now);
@@ -1219,6 +1264,7 @@ $('#nightBtn').onclick = async () => {
   updateNight();
   nightTimer = setInterval(updateNight, 15000);
   await requestWakeLock();
+  if (IS_NATIVE) NP.awake.keepAwake().catch(() => {});
   try { document.documentElement.requestFullscreen && (await document.documentElement.requestFullscreen()); } catch (e) {}
   const n = nextAlarm();
   const review = new Date().getHours() >= 17 ? eveningReview() + ' ' : '';
@@ -1230,6 +1276,7 @@ $('#nightExit').onclick = () => {
   clearInterval(nightTimer);
   try { wakeLock && wakeLock.release(); } catch (e) {}
   wakeLock = null;
+  if (IS_NATIVE) NP.awake.allowSleep().catch(() => {});
   try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {}
 };
 document.addEventListener('visibilitychange', () => {
@@ -1261,6 +1308,7 @@ $('#settingsBtn').onclick = () => {
   $('#sBuffer').value = String(Settings.wakeBuffer);
   $('#sSpeak').checked = Settings.speakConfirm;
   officeSel = [...Settings.officeDays]; renderOfficeDays();
+  renderCalendarSettings();
   fillSoundSelect($('#sSound'), false);
   $('#sSound').value = Settings.sound;
   $('#sFileHint').textContent = customUrl ? 'Eigener Ton ist gespeichert – „Eigene Datei“ im Menü wählen.' : '';
@@ -1407,7 +1455,7 @@ function wakeSuggestion() {
   const now = new Date();
   if (now.getHours() < 16) return null;
   const tmr = addDays(dayStart(now), 1);
-  const first = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(tmr)).sort((a, b) => startOf(a) - startOf(b))[0];
+  const first = allEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(tmr)).sort((a, b) => startOf(a) - startOf(b))[0];
   if (!first) return null;
   const s = startOf(first);
   const at = new Date(s.getTime() - (Settings.wakeBuffer + (first.travel || 0)) * 60000);
@@ -1441,8 +1489,8 @@ function renderWakeCard(el) {
 function eveningReview() {
   const now = new Date();
   const by = (a, b) => startOf(a) - startOf(b);
-  const today = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(now));
-  const tmr = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(addDays(now, 1))).sort(by);
+  const today = allEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(now));
+  const tmr = allEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(addDays(now, 1))).sort(by);
   const open = Notes.list.filter((n) => !n.done);
   const parts = ['Dein Tagesrückblick.'];
   parts.push(today.length ? `Heute ${today.length === 1 ? 'hattest du einen Termin' : `hattest du ${today.length} Termine`}.` : 'Heute war dein Kalender leer.');
@@ -1591,6 +1639,207 @@ async function checkLocation(force) {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkLocation(); });
 
+// ---------- Android-App: Gerätekalender, Benachrichtigungen, Sprache ----------
+const IS_NATIVE = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+const NP = IS_NATIVE ? {
+  cal: Capacitor.registerPlugin('CapacitorCalendar'),
+  ln: Capacitor.registerPlugin('LocalNotifications'),
+  sr: Capacitor.registerPlugin('SpeechRecognition'),
+  tts: Capacitor.registerPlugin('TextToSpeech'),
+  awake: Capacitor.registerPlugin('KeepAwake'),
+} : null;
+
+// Termine aus dem Gerätekalender (Google privat + 747 Exchange), zugeordnet nach Bereich
+const Device = {
+  events: [],
+  calendars: [],
+  KEY: 'zentrale.devcache.v1',
+  map() { return Prefs.get('calMap', {}); },          // calendarId → 'privat' | 'business' | 'off'
+  loadCache() { try { this.events = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) {} },
+  saveCache() { try { localStorage.setItem(this.KEY, JSON.stringify(this.events)); } catch (e) {} },
+  extras() { return Prefs.get('devExtras', {}); },     // eigene Zusatzinfos (Wegzeit) zu Kalenderterminen
+};
+const allEvents = () => Store.events.concat(Device.events);
+
+// Vorschlag: 747 → geschäftlich, Google-Konten → privat, Feiertage/Geburtstage aus
+function guessContext(c) {
+  const s = `${c.accountName || ''} ${c.ownerAccount || ''} ${c.title || ''}`.toLowerCase();
+  if (/feiertag|holiday|geburtstag|birthday|wochennummer|week/.test(s)) return 'off';
+  if (/747/.test(s)) return 'business';
+  if (/gmail|googlemail|martinkupfer/.test(s)) return 'privat';
+  return 'off';
+}
+const writable = (c) => c.allowsContentModifications !== false && c.isImmutable !== true;
+function writeTarget(ctx) {
+  const m = Device.map();
+  const chosen = Prefs.get('calWrite', {})[ctx];
+  if (chosen && m[chosen] === ctx) return chosen;
+  const c = Device.calendars.find((c) => m[c.id] === ctx && writable(c));
+  return c ? c.id : null;
+}
+
+async function connectCalendar() {
+  try {
+    const r = await NP.cal.requestFullCalendarAccess();
+    if (r.result !== 'granted') { toast('Kalenderzugriff wurde nicht erlaubt'); return false; }
+    const { result } = await NP.cal.listCalendars();
+    Device.calendars = result || [];
+    const m = Device.map();
+    for (const c of Device.calendars) if (!(c.id in m)) m[c.id] = guessContext(c);
+    Prefs.set('calMap', m);
+    Prefs.set('calConnected', true);
+    return true;
+  } catch (e) { toast('Kalender nicht erreichbar'); return false; }
+}
+
+function renderCalendarSettings() {
+  const box = $('#sCalList');
+  if (!IS_NATIVE) { $('#sCalBox').hidden = true; return; }
+  $('#sCalBox').hidden = false;
+  box.innerHTML = '';
+  if (!Prefs.get('calConnected', false)) {
+    box.innerHTML = '<button type="button" class="probe" id="sCalConnect">📅 Kalender verbinden</button>';
+    $('#sCalConnect').onclick = async () => { if (await connectCalendar()) { renderCalendarSettings(); syncDeviceCalendar(true); } };
+    return;
+  }
+  const m = Device.map(), w = Prefs.get('calWrite', {});
+  for (const c of Device.calendars) {
+    const row = document.createElement('div');
+    row.className = 'calrow';
+    const ctx = m[c.id] || 'off';
+    const isTarget = ctx !== 'off' && writeTarget(ctx) === c.id;
+    row.innerHTML = `<span class="dot" style="background:${c.color || '#888'}"></span>
+      <div class="cname"><div></div><small></small></div>
+      <select><option value="off">Aus</option><option value="privat">Privat</option><option value="business">Geschäftlich</option></select>`;
+    row.querySelector('.cname div').textContent = c.title || 'Kalender';
+    row.querySelector('.cname small').textContent = (c.accountName || '') + (isTarget ? ' · ✎ neue Termine' : '');
+    const sel = row.querySelector('select');
+    sel.value = ctx;
+    sel.onchange = () => { const mm = Device.map(); mm[c.id] = sel.value; Prefs.set('calMap', mm); renderCalendarSettings(); syncDeviceCalendar(true); };
+    if (ctx !== 'off' && writable(c) && !isTarget) {
+      row.querySelector('.cname small').insertAdjacentHTML('beforeend', ' · <a href="#">hier eintragen</a>');
+      row.querySelector('a').onclick = (e) => { e.preventDefault(); w[ctx] = c.id; Prefs.set('calWrite', w); renderCalendarSettings(); };
+    }
+    box.appendChild(row);
+  }
+}
+
+let lastDevSync = 0;
+async function syncDeviceCalendar(force) {
+  if (!IS_NATIVE || !Prefs.get('calConnected', false)) return;
+  if (!force && Date.now() - lastDevSync < 3 * 60000) return;
+  lastDevSync = Date.now();
+  try {
+    if (!Device.calendars.length) Device.calendars = (await NP.cal.listCalendars()).result || [];
+    const from = addDays(dayStart(new Date()), -1).getTime(), to = addDays(dayStart(new Date()), 60).getTime();
+    const { result } = await NP.cal.listEventsInRange({ from, to });
+    const m = Device.map(), ex = Device.extras();
+    const old = new Map(Device.events.map((e) => [e.id, e]));
+    Device.events = (result || [])
+      .filter((e) => e.calendarId && (m[e.calendarId] === 'privat' || m[e.calendarId] === 'business'))
+      .map((e) => {
+        const s = new Date(e.startDate);
+        const id = 'dev:' + e.id + ':' + e.startDate;
+        const prev = old.get(id) || {};
+        return {
+          id, devId: e.id, calendarId: e.calendarId, external: true, allDay: !!e.isAllDay, series: !!e.isPartOfSeries,
+          title: e.title || '(ohne Titel)', start: `${toDateStr(s)}T${e.isAllDay ? '00:00' : toTimeStr(s)}`,
+          duration: e.isAllDay ? 0 : Math.max(0, Math.round((e.endDate - e.startDate) / 60000)),
+          context: m[e.calendarId], location: e.location || '', note: '',
+          remind: -1, travel: (ex[e.id] && ex[e.id].travel) || 0,
+          notified: true, leaveNotified: !!prev.leaveNotified,
+        };
+      });
+    Device.saveCache();
+    render();
+    syncNativeNotifs();
+  } catch (e) { /* Kalender gerade nicht lesbar */ }
+}
+
+async function saveToDevice(ev) {
+  const cal = writeTarget(ev.context);
+  if (!cal) return false;
+  const s = startOf(ev).getTime();
+  const opts = { title: ev.title, calendarId: cal, startDate: s, endDate: s + Math.max(ev.duration, 15) * 60000,
+    location: ev.location || undefined, description: ev.note || undefined, alerts: ev.remind >= 0 ? [-ev.remind] : [] };
+  if (ev.devId) await NP.cal.modifyEvent({ id: ev.devId, ...opts });
+  else await NP.cal.createEvent(opts);
+  const ex = Device.extras();
+  if (ev.devId) { ex[ev.devId] = { travel: ev.travel || 0 }; Prefs.set('devExtras', ex); }
+  await syncDeviceCalendar(true);
+  return true;
+}
+
+// ---------- Native Benachrichtigungen (auch bei geschlossener App) ----------
+let lastPlanKey = '', channelsReady = false;
+async function ensureChannels() {
+  if (channelsReady) return;
+  try {
+    await NP.ln.createChannel({ id: 'wecker', name: 'Wecker', importance: 5, visibility: 1, vibration: true, sound: 'wecker.wav' });
+    await NP.ln.createChannel({ id: 'termine', name: 'Termine & Losfahren', importance: 4, visibility: 1, vibration: true });
+    channelsReady = true;
+  } catch (e) {}
+}
+async function syncNativeNotifs() {
+  if (!IS_NATIVE) return;
+  const now = new Date(), horizon = new Date(now.getTime() + 7 * 86400000);
+  const plan = [];
+  for (const a of Alarms.list) {
+    let from = now;
+    for (let k = 0; k < 7; k++) {
+      const at = occurrenceAfter(a, from);
+      if (!at || at > horizon) break;
+      [0, 2, 4, 6].forEach((m) => plan.push({ at: new Date(at.getTime() + m * 60000), ch: 'wecker',
+        title: '⏰ ' + (a.label || 'Wecker'), body: m ? `${a.time} Uhr – aufstehen!` : `${a.time} Uhr` }));
+      if (!a.days.length) break;
+      from = new Date(at.getTime() + 60000);
+    }
+  }
+  for (const ev of allEvents()) {
+    const s = startOf(ev);
+    if (s < now || s > horizon) continue;
+    const silent = (d) => ev.context === 'business' && isQuiet(d);
+    if (!ev.external && ev.remind >= 0) {
+      const at = new Date(s.getTime() - ev.remind * 60000);
+      if (at > now && !silent(at)) plan.push({ at, ch: 'termine', title: ev.title, body: `${toTimeStr(s)} Uhr · ${CONTEXTS[ev.context].label}` });
+    }
+    if (ev.travel > 0) {
+      const at = new Date(s.getTime() - (ev.travel + 5) * 60000);
+      if (at > now && !silent(at)) plan.push({ at, ch: 'termine', title: '🚗 Gleich los: ' + ev.title,
+        body: `In 5 Min losfahren${ev.location ? ' nach ' + ev.location : ''} · ${ev.travel} Min Weg` });
+    }
+  }
+  plan.sort((a, b) => a.at - b.at);
+  const list = plan.slice(0, 60);
+  const key = JSON.stringify(list.map((p) => [+p.at, p.title]));
+  if (key === lastPlanKey) return;
+  try {
+    const perm = await NP.ln.checkPermissions();
+    if (perm.display !== 'granted') { if (!list.length) return; const r = await NP.ln.requestPermissions(); if (r.display !== 'granted') return; }
+    await ensureChannels();
+    const pending = await NP.ln.getPending();
+    if (pending.notifications.length) await NP.ln.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
+    if (list.length) {
+      await NP.ln.schedule({ notifications: list.map((p, i) => ({ id: 1000 + i, title: p.title, body: p.body, channelId: p.ch,
+        smallIcon: 'ic_stat_zentrale', schedule: { at: p.at, allowWhileIdle: true } })) });
+    }
+    lastPlanKey = key;
+  } catch (e) {}
+}
+// Wecker in der App ausgeschaltet → Nachklingel-Benachrichtigungen streichen
+async function cancelAlarmFollowUps() {
+  if (!IS_NATIVE) return;
+  try {
+    const now = Date.now();
+    const p = await NP.ln.getPending();
+    const ids = p.notifications.filter((n) => n.title && n.title.startsWith('⏰') && n.schedule && new Date(n.schedule.at) - now < 10 * 60000)
+      .map((n) => ({ id: n.id }));
+    if (ids.length) await NP.ln.cancel({ notifications: ids });
+    await NP.ln.removeAllDeliveredNotifications();
+    lastPlanKey = '';
+  } catch (e) {}
+}
+
 // ---------- Kleinkram ----------
 let toastTimer;
 function toast(msg, alarm) {
@@ -1641,20 +1890,23 @@ document.addEventListener('touchmove', (e) => {
 }, { passive: true });
 document.addEventListener('touchend', endSwipe, { passive: true });
 document.addEventListener('touchcancel', endSwipe, { passive: true });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); checkReminders(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); checkReminders(); syncDeviceCalendar(true); } });
 
 // ---------- Start ----------
 Store.load();
 Alarms.load();
 Notes.load();
+if (IS_NATIVE) Device.loadCache();
 render();
+syncDeviceCalendar(true);
+syncNativeNotifs();
 updateBanner();
 checkReminders();
-setInterval(() => { checkReminders(); render(); checkLocation(); }, 20000);
+setInterval(() => { checkReminders(); render(); checkLocation(); syncDeviceCalendar(); syncNativeNotifs(); }, 20000);
 checkLocation();
 setInterval(checkAlarms, 3000);
 checkAlarms();
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && !IS_NATIVE) {
   navigator.serviceWorker.register('sw.js').then((r) => (swReg = r)).catch(() => {});
 }
 if ('speechSynthesis' in window) speechSynthesis.getVoices();

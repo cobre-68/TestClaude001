@@ -19,8 +19,19 @@ Entwickelt wird überwiegend vom Handy aus über Claude Code.
 ## Ansichten
 Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ Wecker. ⚙️ Einstellungen im Header.
 
-## Architektur (v0.5)
-- Reine Web-App (PWA), kein Build-Schritt: `index.html` (UI + Logik), `sw.js` (Offline + Benachrichtigungen), `manifest.json`.
+## Architektur (v0.6 – Web + Android)
+- **Android-App (Capacitor 8):** `android/`, appId `de.martinkupfer.zentrale`. Web-Dateien werden per
+  `scripts/build-web.js` nach `www/` kopiert, `npx cap sync android`. APK baut `.github/workflows/android.yml` bei jedem
+  Push und hängt sie als Release `apk-latest` an (Zentrale.apk). Signierschlüssel `android/app/zentrale.keystore`
+  (privates Repo; nötig, damit Updates installierbar bleiben). Plugins ohne Bundler über `Capacitor.registerPlugin()`
+  (`NP.cal`, `NP.ln`, `NP.sr`, `NP.tts`, `NP.awake`); `IS_NATIVE` schaltet um.
+- Gerätekalender (`Device`): liest alle Kalender des Handys (Google privat + 747 Exchange via ActiveSync), Zuordnung
+  Kalender → privat/geschäftlich/aus in ⚙️ (`Prefs.calMap`). Neue Termine landen im Kalender des Bereichs
+  (`writeTarget`), Serientermine nur Wegzeit lokal (`devExtras`). `allEvents()` = lokale + Kalendertermine.
+- Native Benachrichtigungen (`syncNativeNotifs`): Wecker (+ Nachklingeln 2/4/6 Min, Ton `res/raw/wecker.wav`),
+  Erinnerungen lokaler Termine, Losfahren – für 7 Tage im Voraus geplant, auch bei geschlossener App.
+- Web-Version (GitHub Pages) bleibt parallel: Pages-Workflow veröffentlicht nur `_site` (ohne android/).
+- Web-App-Kern, kein Build-Schritt: `index.html` (UI + Logik), `sw.js` (Offline + Benachrichtigungen), `manifest.json`.
 - Daten lokal in `localStorage` über das `Store`-Objekt. Der Store ist bewusst gekapselt,
   damit später ein Google-Calendar-Adapter (ein Kalender pro Bereich) eingesetzt werden kann.
 - Wecker separat in `Alarms` (einmalig oder an Wochentagen), Nachtmodus mit Wake Lock, Klingeln mit Schlummern;
@@ -43,8 +54,8 @@ Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ 
 1b. ✅ Wecker mit Nachtmodus, Wischen zwischen Ansichten
 1c. ✅ Gedanken, Weckvorschlag, Abendrückblick, Feierabend, Losfahren, Nachrichten
 2. KI-Assistent (Claude API) für freie Gespräche und Tagesplanung
-3. Capacitor-Wrapper → echte Android-APK für zuverlässige Wecker & Hintergrund-Benachrichtigungen
-4. Kalender-Anbindung: privat über Google, 747 über Exchange/CalDAV
+3. ✅ Android-APK (Capacitor) mit Gerätekalender (privat + 747), nativen Benachrichtigungen, nativer Sprache
+3b. Echter Vollbild-Wecker (Klingeln bei gesperrtem Handy), Standort im Hintergrund
 5. Weitere Kanäle (Mail, Messenger) → „Nervensystem“
 
 ## Bekannte Grenzen
