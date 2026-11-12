@@ -13,16 +13,20 @@ Entwickelt wird überwiegend vom Handy aus über Claude Code.
 - **Sprache zuerst.** Eingabe per Spracherkennung (de-DE), Bestätigung/Ansagen per Sprachausgabe.
 - **Kleine, testbare Schritte.** Jede Änderung muss auf dem Handy sofort ausprobierbar sein.
 - UI-Sprache: Deutsch.
+- **Wochenrhythmus:** Office Di–Do (Wecker 7:30), Homeoffice Mo+Fr (Wecker 8:00), Wochenende kein Wecker.
+  Office-Tage in `Settings.officeDays`, `dayMode()` → 'office' | 'home' | null; Anzeige im Header und im Morgenbriefing.
 
 ## Ansichten
 Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ Wecker. ⚙️ Einstellungen im Header.
 
-## Architektur (v0.3)
+## Architektur (v0.4)
 - Reine Web-App (PWA), kein Build-Schritt: `index.html` (UI + Logik), `sw.js` (Offline + Benachrichtigungen), `manifest.json`.
 - Daten lokal in `localStorage` über das `Store`-Objekt. Der Store ist bewusst gekapselt,
   damit später ein Google-Calendar-Adapter (ein Kalender pro Bereich) eingesetzt werden kann.
 - Wecker separat in `Alarms` (einmalig oder an Wochentagen), Nachtmodus mit Wake Lock, Klingeln mit Schlummern;
   nach „Aus“ folgt ein gesprochenes Morgenbriefing aus dem Kalender. „Weck mich …“ per Sprache legt einen Wecker an.
+- Wecktöne: synthetisch (Klassisch, Sanfte Glocke, Marimba, Aufsteigend) über Web Audio, oder eigene Datei (IndexedDB
+  `SoundDB`). Standardton in Settings, pro Wecker überschreibbar; werden langsam lauter.
 - `Notes`: geparkte Gedanken (Sprachnotiz, Bereich, erledigt, → Termin umwandeln).
 - `Settings`: Feierabend-Zeiten (geschäftliche Erinnerungen stumm), Wochenende frei, Aufsteh-Vorlauf, Sprachbestätigung.
 - Verknüpfungen: Weckvorschlag aus erstem Termin morgen (Vorlauf + Wegzeit), Abendrückblick (🔊 ab 18 Uhr, beim

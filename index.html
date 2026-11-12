@@ -100,6 +100,8 @@
   .sugg .yes { background: var(--warn); color: #000; border-color: var(--warn); font-weight: 600; }
   .chk { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 15px; margin: 14px 0 4px; }
   .chk input { width: 22px; height: 22px; flex: none; accent-color: var(--warn); }
+  .probe { width: 100%; padding: 11px 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2);
+    color: var(--text); font: inherit; font-size: 14px; white-space: nowrap; }
   .linkbtn { background: none; border: 0; color: var(--business); font: inherit; font-size: 14px; padding: 8px 0 0; }
   .ev .meta a { color: var(--business); text-decoration: none; }
   .quiet { color: var(--warn); }
@@ -196,6 +198,9 @@
   <form id="alarmForm" method="dialog">
     <h2 id="aedTitle">Neuer Wecker</h2>
     <input id="aTime" type="time" class="bigtime" required>
+    <label for="aSound">Ton</label>
+    <div class="row"><div style="flex:3"><select id="aSound"></select></div>
+      <div><button type="button" class="probe" id="aProbe">▶ Probe</button></div></div>
     <label for="aLabel">Bezeichnung</label>
     <input id="aLabel" placeholder="Wecker" autocomplete="off">
     <label>Wiederholen</label>
@@ -266,6 +271,14 @@
       <option value="30">30 Min</option><option value="45">45 Min</option><option value="60">1 Std</option>
       <option value="75">1 Std 15</option><option value="90">1,5 Std</option><option value="120">2 Std</option>
     </select>
+    <label>Office-Tage (übrige Werktage = Homeoffice)</label>
+    <div class="days" id="sOffice"></div>
+    <label for="sSound">Standard-Weckton</label>
+    <div class="row"><div style="flex:3"><select id="sSound"></select></div>
+      <div><button type="button" class="probe" id="sProbe">▶ Probe</button></div></div>
+    <label for="sFile">Eigener Ton (MP3, M4A …)</label>
+    <input id="sFile" type="file" accept="audio/*">
+    <div class="hint" id="sFileHint"></div>
     <label class="chk"><input type="checkbox" id="sSpeak"> Eingaben laut bestätigen</label>
     <div class="actions">
       <button type="button" id="sCancel">Abbrechen</button>
@@ -557,6 +570,8 @@ function render() {
   $('#calView').hidden = ['wecker', 'gedanken'].includes(view);
   $('#alarmView').hidden = view !== 'wecker';
   $('#notesView').hidden = view !== 'gedanken';
+  const mode = dayMode();
+  if (mode) $('#today').insertAdjacentText('beforeend', mode === 'office' ? ' · 🏢 Office' : ' · 🏠 Homeoffice');
   if (isQuiet()) $('#today').insertAdjacentHTML('beforeend', ' · <span class="quiet">🌙 Feierabend</span>');
   if (view === 'wecker') { renderWakeCard($('#wakeCard2')); renderAlarms(); return; }
   if (view === 'gedanken') { renderNotes(); return; }
@@ -841,7 +856,18 @@ const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const Alarms = {
   KEY: 'zentrale.alarms.v1',
   list: [],
-  load() { try { this.list = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) {} },
+  load() {
+    try { this.list = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) {}
+    // Martins Wochenrhythmus einmalig anlegen: Office Di–Do 7:30, Homeoffice Mo+Fr 8:00, Wochenende frei
+    if (!Prefs.get('seedWeek', false)) {
+      this.list.push(
+        { id: uid(), time: '07:30', label: 'Office', days: [2, 3, 4], date: null, enabled: true },
+        { id: uid(), time: '08:00', label: 'Homeoffice', days: [1, 5], date: null, enabled: true }
+      );
+      Prefs.set('seedWeek', true);
+      this.save();
+    }
+  },
   save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} },
   upsert(a) {
     const i = this.list.findIndex((x) => x.id === a.id);
@@ -941,6 +967,8 @@ function openAlarmEditor(a) {
   $('#aLabel').value = a && a.label !== 'Wecker' ? a.label : '';
   selDays = a ? [...a.days] : [];
   renderDayButtons();
+  fillSoundSelect($('#aSound'), true);
+  $('#aSound').value = (a && a.sound) || '';
   $('#aDel').hidden = !a;
   $('#alarmEd').showModal();
   unlockAudio();
@@ -955,7 +983,7 @@ $('#alarmForm').addEventListener('submit', (e) => {
     date = toDateStr(d);
   }
   const a = { id: editingAlarm ? editingAlarm.id : uid(), time, label: $('#aLabel').value.trim() || 'Wecker',
-    days: [...selDays], date, enabled: true };
+    days: [...selDays], date, enabled: true, sound: $('#aSound').value || undefined };
   Alarms.upsert(a);
   $('#alarmEd').close();
   renderAlarms();
@@ -963,7 +991,13 @@ $('#alarmForm').addEventListener('submit', (e) => {
   if (n) toast(`Wecker ${relIn(n - new Date())} (${dayLabel(n)}, ${a.time} Uhr)`);
   askNotifPermission();
 });
-$('#aCancel').onclick = () => $('#alarmEd').close();
+$('#aCancel').onclick = () => { stopSound(); $('#alarmEd').close(); };
+$('#aProbe').onclick = () => previewSound($('#aSound').value || Settings.sound || 'klassisch');
+function fillSoundSelect(sel, withDefault) {
+  sel.innerHTML = (withDefault ? `<option value="">Standard (${SOUNDS[Settings.sound || 'klassisch']})</option>` : '') +
+    Object.entries(SOUNDS).filter(([k]) => k !== 'datei' || customUrl)
+      .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+}
 $('#aDel').onclick = () => { if (editingAlarm) Alarms.remove(editingAlarm.id); $('#alarmEd').close(); renderAlarms(); };
 
 // Ton: AudioContext muss einmal durch eine Berührung freigeschaltet werden
@@ -976,41 +1010,92 @@ function unlockAudio() {
 }
 document.addEventListener('pointerdown', unlockAudio, { passive: true });
 
-let ringTimer = null, ringing = null, ringStart = 0;
-function ringTone() {
-  if (!audioCtx) return;
-  const vol = Math.min(0.08 + (Date.now() - ringStart) / 60000 * 0.3, 0.5); // wird langsam lauter
-  const t0 = audioCtx.currentTime;
-  [0, 0.18, 0.36, 0.54].forEach((t, i) => {
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.type = 'sine'; o.frequency.value = i % 2 ? 1046 : 784;
-    o.connect(g); g.connect(audioCtx.destination);
-    g.gain.setValueAtTime(vol, t0 + t);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + t + 0.16);
-    o.start(t0 + t); o.stop(t0 + t + 0.17);
-  });
+// ---------- Wecktöne ----------
+const SOUNDS = { klassisch: 'Klassisch', sanft: 'Sanfte Glocke', marimba: 'Marimba', aufsteigend: 'Aufsteigend', datei: 'Eigene Datei' };
+function tone(freq, start, dur, vol, type = 'sine') {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(vol, start + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.start(start); o.stop(start + dur + 0.05);
 }
+const PATTERNS = {
+  klassisch:   { every: 1300, play: (t, v) => [0, 0.18, 0.36, 0.54].forEach((d, i) => tone(i % 2 ? 1046 : 784, t + d, 0.16, v)) },
+  sanft:       { every: 3200, play: (t, v) => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { tone(f, t + i * 0.35, 2.4, v * 0.8); tone(f * 2, t + i * 0.35, 1.2, v * 0.15); }) },
+  marimba:     { every: 2100, play: (t, v) => [659, 784, 988, 784, 880, 659].forEach((f, i) => tone(f, t + i * 0.16, 0.4, v, 'triangle')) },
+  aufsteigend: { every: 2600, play: (t, v) => [392, 440, 494, 523, 587, 659, 740, 784].forEach((f, i) => tone(f, t + i * 0.14, 0.22, v)) },
+};
+
+// Eigene Datei liegt in IndexedDB (zu groß für localStorage)
+const SoundDB = {
+  open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('zentrale', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('files');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+  },
+  async put(blob) {
+    const db = await this.open();
+    return new Promise((res, rej) => { const tx = db.transaction('files', 'readwrite'); tx.objectStore('files').put(blob, 'alarm'); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  },
+  async get() {
+    try {
+      const db = await this.open();
+      return await new Promise((res) => { const r = db.transaction('files').objectStore('files').get('alarm'); r.onsuccess = () => res(r.result || null); r.onerror = () => res(null); });
+    } catch (e) { return null; }
+  },
+};
+let customUrl = null;
+SoundDB.get().then((b) => { if (b) customUrl = URL.createObjectURL(b); });
+
+let ringTimer = null, ringing = null, ringStart = 0, ringAudio = null, previewTimer = null;
+const rampVol = (since) => Math.min(0.08 + (Date.now() - since) / 60000 * 0.3, 0.5); // wird langsam lauter
+
+function startSound(id, since, onTick) {
+  stopSound();
+  unlockAudio();
+  if (id === 'datei' && customUrl) {
+    ringAudio = new Audio(customUrl);
+    ringAudio.loop = true; ringAudio.volume = 0.25;
+    ringAudio.play().catch(() => {});
+    ringTimer = setInterval(() => { ringAudio.volume = Math.min(1, 0.25 + (Date.now() - since) / 60000 * 0.75); onTick && onTick(); }, 1000);
+    return;
+  }
+  const pat = PATTERNS[id] || PATTERNS.klassisch;
+  const play = () => { if (audioCtx) pat.play(audioCtx.currentTime + 0.02, rampVol(since)); };
+  play();
+  ringTimer = setInterval(() => { play(); onTick && onTick(); }, pat.every);
+}
+function stopSound() {
+  clearInterval(ringTimer); ringTimer = null;
+  clearTimeout(previewTimer);
+  if (ringAudio) { ringAudio.pause(); ringAudio = null; }
+}
+function previewSound(id) {
+  startSound(id, Date.now() - 60000); // Probe in mittlerer Lautstärke
+  previewTimer = setTimeout(stopSound, id === 'datei' ? 6000 : (PATTERNS[id] || PATTERNS.klassisch).every * 2);
+}
+const soundOf = (a) => (a && a.sound) || Settings.sound || 'klassisch';
 
 async function ring(a) {
   ringing = a; ringStart = Date.now();
   $('#ringClock').textContent = toTimeStr(new Date());
   $('#ringLabel').textContent = a.label || 'Wecker';
   $('#ring').hidden = false;
-  unlockAudio();
-  ringTone();
-  clearInterval(ringTimer);
-  ringTimer = setInterval(() => {
-    ringTone();
+  startSound(soundOf(a), ringStart, () => {
     if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
     $('#ringClock').textContent = toTimeStr(new Date());
     if (Date.now() - ringStart > 10 * 60000) stopRing(false); // nach 10 Min automatisch aus
-  }, 1300);
+  });
   if (notifState() === 'granted' && swReg) {
     try { await swReg.showNotification('⏰ ' + (a.label || 'Wecker'), { body: a.time + ' Uhr', tag: 'alarm-' + a.id, vibrate: [500, 200, 500, 200, 500], requireInteraction: true }); } catch (e) {}
   }
 }
 function stopRing(withBriefing) {
-  clearInterval(ringTimer); ringTimer = null;
+  stopSound();
   if (navigator.vibrate) navigator.vibrate(0);
   $('#ring').hidden = true;
   const a = ringing; ringing = null;
@@ -1023,7 +1108,7 @@ $('#snoozeBtn').onclick = () => {
   const a = ringing;
   stopRing(false);
   const d = new Date(Date.now() + 5 * 60000);
-  Alarms.upsert({ id: uid(), time: toTimeStr(d), label: (a && a.label) || 'Wecker', days: [], date: toDateStr(d), enabled: true, snooze: true });
+  Alarms.upsert({ id: uid(), time: toTimeStr(d), label: (a && a.label) || 'Wecker', days: [], date: toDateStr(d), enabled: true, snooze: true, sound: a && a.sound });
   toast('Schlummern bis ' + toTimeStr(d));
 };
 
@@ -1035,7 +1120,8 @@ function morningBriefing() {
   const todays = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(now) && startOf(e) >= now)
     .sort((a, b) => startOf(a) - startOf(b));
   const date = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
-  let text = `${greet}. Heute ist ${date}. `;
+  const mode = dayMode(now);
+  let text = `${greet}. Heute ist ${date}${mode === 'office' ? ', ein Office-Tag' : mode === 'home' ? ', Homeoffice' : ''}. `;
   if (!todays.length) text += 'Im Kalender steht heute nichts an.';
   else {
     const p = todays.filter((e) => e.context === 'privat').length, b = todays.length - p;
@@ -1103,7 +1189,8 @@ document.addEventListener('visibilitychange', () => {
 
 // ---------- Einstellungen ----------
 const Settings = Object.assign(
-  { quietOn: true, quietFrom: '19:00', quietTo: '08:00', weekendOff: true, wakeBuffer: 75, speakConfirm: true },
+  { quietOn: true, quietFrom: '19:00', quietTo: '08:00', weekendOff: true, wakeBuffer: 75, speakConfirm: true,
+    officeDays: [2, 3, 4], sound: 'klassisch' },
   Prefs.get('settings', {})
 );
 const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
@@ -1123,15 +1210,51 @@ $('#settingsBtn').onclick = () => {
   $('#sWeekend').checked = Settings.weekendOff;
   $('#sBuffer').value = String(Settings.wakeBuffer);
   $('#sSpeak').checked = Settings.speakConfirm;
+  officeSel = [...Settings.officeDays]; renderOfficeDays();
+  fillSoundSelect($('#sSound'), false);
+  $('#sSound').value = Settings.sound;
+  $('#sFileHint').textContent = customUrl ? 'Eigener Ton ist gespeichert – „Eigene Datei“ im Menü wählen.' : '';
   $('#settings').showModal();
 };
-$('#sCancel').onclick = () => $('#settings').close();
+$('#sCancel').onclick = () => { stopSound(); $('#settings').close(); };
+let officeSel = [];
+function renderOfficeDays() {
+  const box = $('#sOffice'); box.innerHTML = '';
+  for (const d of [1, 2, 3, 4, 5]) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = DAY_SHORT[d]; b.className = officeSel.includes(d) ? 'on' : '';
+    b.onclick = () => { officeSel = officeSel.includes(d) ? officeSel.filter((x) => x !== d) : [...officeSel, d]; renderOfficeDays(); };
+    box.appendChild(b);
+  }
+}
+$('#sProbe').onclick = () => previewSound($('#sSound').value);
+$('#sFile').onchange = async () => {
+  const f = $('#sFile').files[0];
+  if (!f) return;
+  try {
+    await SoundDB.put(f);
+    if (customUrl) URL.revokeObjectURL(customUrl);
+    customUrl = URL.createObjectURL(f);
+    fillSoundSelect($('#sSound'), false);
+    $('#sSound').value = 'datei';
+    $('#sFileHint').textContent = '„' + f.name + '“ gespeichert.';
+    previewSound('datei');
+  } catch (e) { $('#sFileHint').textContent = 'Konnte die Datei nicht speichern.'; }
+};
+// Office oder Homeoffice?
+function dayMode(d = new Date()) {
+  const w = d.getDay();
+  if (w === 0 || w === 6) return null;
+  return Settings.officeDays.includes(w) ? 'office' : 'home';
+}
 $('#setForm').addEventListener('submit', (e) => {
   e.preventDefault();
   Object.assign(Settings, {
     quietOn: $('#sQuiet').checked, quietFrom: $('#sFrom').value || '19:00', quietTo: $('#sTo').value || '08:00',
     weekendOff: $('#sWeekend').checked, wakeBuffer: +$('#sBuffer').value, speakConfirm: $('#sSpeak').checked,
+    officeDays: [...officeSel], sound: $('#sSound').value || 'klassisch',
   });
+  stopSound();
   Prefs.set('settings', Settings);
   $('#settings').close();
   render();
