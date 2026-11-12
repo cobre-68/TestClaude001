@@ -1,0 +1,9 @@
+{
+  "appId": "de.martinkupfer.zentrale",
+  "appName": "Zentrale",
+  "webDir": "www",
+  "android": { "backgroundColor": "#0f1115" },
+  "plugins": {
+    "LocalNotifications": { "smallIcon": "ic_stat_zentrale", "iconColor": "#ffb057" }
+  }
+}
