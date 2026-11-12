@@ -88,6 +88,51 @@
   .banner { background: rgba(255,176,87,.1); border: 1px solid rgba(255,176,87,.4); color: var(--warn);
     border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
   .banner button { background: none; border: 0; color: var(--text); text-decoration: underline; font: inherit; padding: 0; }
+  .seg button[data-f="wecker"] { flex: .55; }
+  .seg button[data-f="wecker"].on { color: var(--warn); }
+  main { touch-action: pan-y; }
+  main.slide-l { animation: slideL .22s ease-out; }
+  main.slide-r { animation: slideR .22s ease-out; }
+  @keyframes slideL { from { transform: translateX(40px); opacity: .3 } to { transform: none; opacity: 1 } }
+  @keyframes slideR { from { transform: translateX(-40px); opacity: .3 } to { transform: none; opacity: 1 } }
+
+  /* Wecker */
+  .nightbtn { width: 100%; padding: 16px; border-radius: var(--radius); border: 1px solid rgba(255,176,87,.45);
+    background: rgba(255,176,87,.08); color: var(--warn); font: inherit; font-size: 17px; margin-bottom: 8px; }
+  .nighthint { font-size: 13px; color: var(--muted); margin: 0 4px 18px; }
+  .alarm { display: flex; align-items: center; gap: 14px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; }
+  .alarm .big { font-size: 34px; font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+  .alarm.off .big, .alarm.off .info { opacity: .4; }
+  .alarm .info { flex: 1; min-width: 0; }
+  .alarm .info div:first-child { font-weight: 500; }
+  .alarm .info div + div { color: var(--muted); font-size: 13px; }
+  .switch { width: 52px; height: 30px; border-radius: 30px; background: var(--panel2); border: 1px solid var(--line);
+    position: relative; flex: none; }
+  .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--muted); transition: .2s; }
+  .switch.on { background: rgba(255,176,87,.25); border-color: var(--warn); }
+  .switch.on::after { left: 25px; background: var(--warn); }
+  .days { display: flex; gap: 6px; }
+  .days button { flex: 1; padding: 10px 0; border-radius: 10px; border: 1px solid var(--line); background: var(--bg);
+    color: var(--muted); font: inherit; font-size: 14px; }
+  .days button.on { border-color: var(--warn); color: var(--warn); background: rgba(255,176,87,.08); }
+  input.bigtime { font-size: 40px; text-align: center; padding: 8px; font-weight: 300; }
+
+  /* Vollbild: Nachtmodus & Klingeln */
+  .overlay { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 30px; }
+  .overlay[hidden] { display: none; }
+  #night .clock { font-size: 92px; font-weight: 200; color: #6b5a44; font-variant-numeric: tabular-nums; }
+  #night .sub { color: #4a4036; margin-top: 8px; }
+  #night .exit { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); background: none;
+    border: 1px solid #2a2520; color: #6b5a44; padding: 12px 24px; border-radius: 30px; font: inherit; }
+  #ring { background: radial-gradient(circle at 50% 40%, #3a2a12, #000 70%); }
+  #ring .clock { font-size: 84px; font-weight: 200; font-variant-numeric: tabular-nums; }
+  #ring .lbl { font-size: 22px; color: var(--warn); margin: 6px 0 50px; }
+  #ring button { width: min(320px, 90%); padding: 18px; border-radius: 40px; font: inherit; font-size: 18px; margin: 8px 0; border: 0; }
+  #snoozeBtn { background: var(--panel2); color: var(--text); }
+  #stopBtn { background: var(--warn); color: #000; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -101,6 +146,7 @@
     <button data-f="all">Alle</button>
     <button data-f="privat">Privat</button>
     <button data-f="business">Geschäftlich</button>
+    <button data-f="wecker" aria-label="Wecker">⏰</button>
   </div>
 </header>
 
@@ -108,9 +154,49 @@
   <div id="notifBanner" class="banner" hidden>
     Erinnerungen sind aus. <button id="enableNotif">Benachrichtigungen erlauben</button>
   </div>
-  <div id="next"></div>
-  <div id="list"></div>
+  <div id="calView">
+    <div id="next"></div>
+    <div id="list"></div>
+  </div>
+  <div id="alarmView" hidden>
+    <button class="nightbtn" id="nightBtn">🌙 Nachtmodus starten</button>
+    <div class="nighthint">Handy ans Ladekabel, Nachtmodus an – der Bildschirm bleibt gedimmt wach und der Wecker klingelt zuverlässig.</div>
+    <div id="alarmList"></div>
+  </div>
 </main>
+
+<!-- Wecker bearbeiten -->
+<dialog id="alarmEd">
+  <form id="alarmForm" method="dialog">
+    <h2 id="aedTitle">Neuer Wecker</h2>
+    <input id="aTime" type="time" class="bigtime" required>
+    <label for="aLabel">Bezeichnung</label>
+    <input id="aLabel" placeholder="Wecker" autocomplete="off">
+    <label>Wiederholen</label>
+    <div class="days" id="aDays"></div>
+    <div class="hint" id="aHint"></div>
+    <div class="actions">
+      <button type="button" class="danger" id="aDel">Löschen</button>
+      <button type="button" id="aCancel">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Nachtmodus -->
+<div class="overlay" id="night" hidden>
+  <div class="clock" id="nightClock"></div>
+  <div class="sub" id="nightSub"></div>
+  <button class="exit" id="nightExit">Nachtmodus beenden</button>
+</div>
+
+<!-- Klingeln -->
+<div class="overlay" id="ring" hidden>
+  <div class="clock" id="ringClock"></div>
+  <div class="lbl" id="ringLabel"></div>
+  <button id="snoozeBtn">Schlummern · 5 Min</button>
+  <button id="stopBtn">Aus</button>
+</div>
 
 <div class="fab">
   <button id="mic" aria-label="Sprechen">🎙</button>
@@ -337,13 +423,27 @@ function parseGerman(input) {
   title = title.charAt(0).toUpperCase() + title.slice(1);
 
   const start = new Date(date); start.setHours(hh, mm, 0, 0);
-  return { title, start, context, remind };
+  return { title, start, context, remind, wake };
 }
 
 // ---------- UI ----------
 const $ = (s) => document.querySelector(s);
-let filter = Prefs.get('filter', 'all');
+const VIEWS = ['all', 'privat', 'business', 'wecker'];
+let view = Prefs.get('view', 'all');
+if (!VIEWS.includes(view)) view = 'all';
+let filter = view === 'wecker' ? 'all' : view; // Kalender-Filter
 let editingId = null;
+
+function setView(v, dir) {
+  if (!VIEWS.includes(v) || v === view) return;
+  view = v;
+  if (v !== 'wecker') filter = v;
+  Prefs.set('view', v);
+  const m = $('main');
+  m.classList.remove('slide-l', 'slide-r');
+  if (dir) { void m.offsetWidth; m.classList.add(dir > 0 ? 'slide-l' : 'slide-r'); }
+  render();
+}
 
 function visibleEvents() {
   return Store.events
@@ -353,7 +453,10 @@ function visibleEvents() {
 
 function render() {
   $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
-  document.querySelectorAll('#filter button').forEach((b) => b.classList.toggle('on', b.dataset.f === filter));
+  document.querySelectorAll('#filter button').forEach((b) => b.classList.toggle('on', b.dataset.f === view));
+  $('#calView').hidden = view === 'wecker';
+  $('#alarmView').hidden = view !== 'wecker';
+  if (view === 'wecker') { renderAlarms(); return; }
 
   const now = new Date();
   const todayStart = dayStart(now);
@@ -499,6 +602,16 @@ $('#voiceOk').onclick = () => {
   $('#voice').close();
   if (!text) return;
   const p = parseGerman(text);
+  if (p.wake) {
+    // "Weck mich ..." → echter Wecker statt Termin
+    const a = { id: uid(), time: toTimeStr(p.start), label: p.title === 'Wecken' ? 'Wecker' : p.title,
+      days: [], date: toDateStr(p.start), enabled: true };
+    Alarms.upsert(a);
+    setView('wecker', 1);
+    const msg = `Wecker gestellt: ${dayLabel(p.start)} um ${a.time} Uhr.`;
+    toast(msg); say(msg);
+    return;
+  }
   openEditor(null, {
     title: p.title, start: p.start,
     context: p.context || undefined,
@@ -506,7 +619,7 @@ $('#voiceOk').onclick = () => {
     duration: p.remind === 0 && p.title === 'Wecken' ? 0 : undefined,
   });
 };
-$('#add').onclick = () => openEditor(null);
+$('#add').onclick = () => (view === 'wecker' ? openAlarmEditor(null) : openEditor(null));
 
 // ---------- Sprache: Ausgabe ----------
 function say(text) {
@@ -520,6 +633,11 @@ function say(text) {
 }
 $('#speakBtn').onclick = () => {
   const now = new Date();
+  if (view === 'wecker') {
+    const n = nextAlarm(now);
+    const text = n ? `Nächster Wecker: ${dayLabel(n.at)} um ${n.alarm.time} Uhr.` : 'Kein Wecker gestellt.';
+    say(text); toast(text); return;
+  }
   const todays = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(now) && startOf(e) >= now);
   const tomorrow = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(addDays(now, 1)));
   const part = filter === 'all' ? '' : ' im Bereich ' + CONTEXTS[filter].label;
@@ -583,6 +701,273 @@ function checkReminders() {
   }
 }
 
+// ---------- Wecker ----------
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const DAY_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+const Alarms = {
+  KEY: 'zentrale.alarms.v1',
+  list: [],
+  load() { try { this.list = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} },
+  upsert(a) {
+    const i = this.list.findIndex((x) => x.id === a.id);
+    if (i >= 0) this.list[i] = a; else this.list.push(a);
+    this.save();
+  },
+  remove(id) { this.list = this.list.filter((a) => a.id !== id); this.save(); },
+};
+
+const atTime = (d, hhmm) => { const [h, m] = hhmm.split(':').map(Number); const x = new Date(d); x.setHours(h, m, 0, 0); return x; };
+
+// Nächster Zeitpunkt, an dem ein Wecker klingelt (nach "from")
+function occurrenceAfter(a, from) {
+  if (!a.enabled) return null;
+  if (!a.days.length) {
+    const at = atTime(new Date(a.date + 'T00:00'), a.time);
+    return at > from ? at : null;
+  }
+  for (let i = 0; i < 8; i++) {
+    const d = addDays(dayStart(from), i);
+    if (!a.days.includes(d.getDay())) continue;
+    const at = atTime(d, a.time);
+    if (at > from) return at;
+  }
+  return null;
+}
+function nextAlarm(from = new Date()) {
+  let best = null;
+  for (const a of Alarms.list) {
+    const at = occurrenceAfter(a, from);
+    if (at && (!best || at < best.at)) best = { alarm: a, at };
+  }
+  return best;
+}
+function daysText(a) {
+  if (!a.days.length) return dayLabel(atTime(new Date(a.date + 'T00:00'), a.time));
+  if (a.days.length === 7) return 'Täglich';
+  const s = [...a.days].sort().join();
+  if (s === '1,2,3,4,5') return 'Werktags';
+  if (s === '0,6') return 'Wochenende';
+  return DAY_ORDER.filter((d) => a.days.includes(d)).map((d) => DAY_SHORT[d]).join(' ');
+}
+
+function renderAlarms() {
+  const el = $('#alarmList');
+  el.innerHTML = '';
+  const list = [...Alarms.list].filter((a) => !a.snooze).sort((a, b) => a.time.localeCompare(b.time));
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><b>Kein Wecker</b>Tippe auf + oder sag 🎙 „Weck mich morgen um 6:45“</div>';
+  }
+  for (const a of list) {
+    const row = document.createElement('div');
+    row.className = 'alarm' + (a.enabled ? '' : ' off');
+    const at = occurrenceAfter(a, new Date());
+    row.innerHTML = `<div class="big">${a.time}</div><div class="info"><div></div><div></div></div>
+      <div class="switch ${a.enabled ? 'on' : ''}" role="switch"></div>`;
+    row.querySelector('.info div').textContent = a.label || 'Wecker';
+    row.querySelector('.info div + div').textContent = daysText(a) + (at ? ' · ' + relIn(at - new Date()) : '');
+    row.querySelector('.switch').onclick = (e) => {
+      e.stopPropagation();
+      a.enabled = !a.enabled;
+      // Einmal-Wecker in der Vergangenheit beim Einschalten auf nächstes Vorkommen setzen
+      if (a.enabled && !a.days.length && !occurrenceAfter(a, new Date())) {
+        let d = atTime(new Date(), a.time);
+        if (d <= new Date()) d = addDays(d, 1);
+        a.date = toDateStr(d);
+      }
+      Alarms.upsert(a); renderAlarms();
+      if (a.enabled) { const n = occurrenceAfter(a, new Date()); toast('Wecker ' + relIn(n - new Date())); }
+    };
+    row.onclick = () => openAlarmEditor(a);
+    el.appendChild(row);
+  }
+}
+
+// Editor
+let editingAlarm = null, selDays = [];
+function renderDayButtons() {
+  const box = $('#aDays');
+  box.innerHTML = '';
+  for (const d of DAY_ORDER) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = DAY_SHORT[d];
+    b.className = selDays.includes(d) ? 'on' : '';
+    b.onclick = () => {
+      selDays = selDays.includes(d) ? selDays.filter((x) => x !== d) : [...selDays, d];
+      renderDayButtons();
+    };
+    box.appendChild(b);
+  }
+  $('#aHint').textContent = selDays.length ? '' : 'Ohne Tage klingelt der Wecker einmal – zum nächsten passenden Zeitpunkt.';
+}
+function openAlarmEditor(a) {
+  editingAlarm = a;
+  $('#aedTitle').textContent = a ? 'Wecker bearbeiten' : 'Neuer Wecker';
+  $('#aTime').value = a ? a.time : '07:00';
+  $('#aLabel').value = a && a.label !== 'Wecker' ? a.label : '';
+  selDays = a ? [...a.days] : [];
+  renderDayButtons();
+  $('#aDel').hidden = !a;
+  $('#alarmEd').showModal();
+  unlockAudio();
+}
+$('#alarmForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const time = $('#aTime').value || '07:00';
+  let date = null;
+  if (!selDays.length) {
+    let d = atTime(new Date(), time);
+    if (d <= new Date()) d = addDays(d, 1);
+    date = toDateStr(d);
+  }
+  const a = { id: editingAlarm ? editingAlarm.id : uid(), time, label: $('#aLabel').value.trim() || 'Wecker',
+    days: [...selDays], date, enabled: true };
+  Alarms.upsert(a);
+  $('#alarmEd').close();
+  renderAlarms();
+  const n = occurrenceAfter(a, new Date());
+  if (n) toast(`Wecker ${relIn(n - new Date())} (${dayLabel(n)}, ${a.time} Uhr)`);
+  askNotifPermission();
+});
+$('#aCancel').onclick = () => $('#alarmEd').close();
+$('#aDel').onclick = () => { if (editingAlarm) Alarms.remove(editingAlarm.id); $('#alarmEd').close(); renderAlarms(); };
+
+// Ton: AudioContext muss einmal durch eine Berührung freigeschaltet werden
+let audioCtx = null;
+function unlockAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+}
+document.addEventListener('pointerdown', unlockAudio, { passive: true });
+
+let ringTimer = null, ringing = null, ringStart = 0;
+function ringTone() {
+  if (!audioCtx) return;
+  const vol = Math.min(0.08 + (Date.now() - ringStart) / 60000 * 0.3, 0.5); // wird langsam lauter
+  const t0 = audioCtx.currentTime;
+  [0, 0.18, 0.36, 0.54].forEach((t, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = i % 2 ? 1046 : 784;
+    o.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(vol, t0 + t);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + t + 0.16);
+    o.start(t0 + t); o.stop(t0 + t + 0.17);
+  });
+}
+
+async function ring(a) {
+  ringing = a; ringStart = Date.now();
+  $('#ringClock').textContent = toTimeStr(new Date());
+  $('#ringLabel').textContent = a.label || 'Wecker';
+  $('#ring').hidden = false;
+  unlockAudio();
+  ringTone();
+  clearInterval(ringTimer);
+  ringTimer = setInterval(() => {
+    ringTone();
+    if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
+    $('#ringClock').textContent = toTimeStr(new Date());
+    if (Date.now() - ringStart > 10 * 60000) stopRing(false); // nach 10 Min automatisch aus
+  }, 1300);
+  if (notifState() === 'granted' && swReg) {
+    try { await swReg.showNotification('⏰ ' + (a.label || 'Wecker'), { body: a.time + ' Uhr', tag: 'alarm-' + a.id, vibrate: [500, 200, 500, 200, 500], requireInteraction: true }); } catch (e) {}
+  }
+}
+function stopRing(withBriefing) {
+  clearInterval(ringTimer); ringTimer = null;
+  if (navigator.vibrate) navigator.vibrate(0);
+  $('#ring').hidden = true;
+  const a = ringing; ringing = null;
+  if (a && a.snooze) Alarms.remove(a.id);
+  render();
+  if (withBriefing) morningBriefing();
+}
+$('#stopBtn').onclick = () => stopRing(true);
+$('#snoozeBtn').onclick = () => {
+  const a = ringing;
+  stopRing(false);
+  const d = new Date(Date.now() + 5 * 60000);
+  Alarms.upsert({ id: uid(), time: toTimeStr(d), label: (a && a.label) || 'Wecker', days: [], date: toDateStr(d), enabled: true, snooze: true });
+  toast('Schlummern bis ' + toTimeStr(d));
+};
+
+// Nach dem Aufstehen: Tagesüberblick (Verknüpfung Wecker ↔ Kalender)
+function morningBriefing() {
+  const now = new Date();
+  const h = now.getHours();
+  const greet = h < 11 ? 'Guten Morgen' : h < 17 ? 'Hallo' : 'Guten Abend';
+  const todays = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(now) && startOf(e) >= now)
+    .sort((a, b) => startOf(a) - startOf(b));
+  const date = now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  let text = `${greet}. Heute ist ${date}. `;
+  if (!todays.length) text += 'Im Kalender steht heute nichts an.';
+  else {
+    const p = todays.filter((e) => e.context === 'privat').length, b = todays.length - p;
+    const parts = [];
+    if (b) parts.push(b === 1 ? 'ein geschäftlicher' : b + ' geschäftliche');
+    if (p) parts.push(p === 1 ? 'ein privater' : p + ' private');
+    text += `Du hast heute ${parts.join(' und ')} Termin${todays.length > 1 ? 'e' : ''}. Der erste: um ${toTimeStr(startOf(todays[0]))} ${todays[0].title}.`;
+  }
+  say(text);
+  toast(text);
+}
+
+function checkAlarms() {
+  if (ringing) return;
+  const now = new Date();
+  for (const a of Alarms.list) {
+    if (!a.enabled) continue;
+    let due = null;
+    if (!a.days.length) due = atTime(new Date(a.date + 'T00:00'), a.time);
+    else if (a.days.includes(now.getDay())) due = atTime(now, a.time);
+    if (!due || due > now || now - due > 10 * 60000) continue;
+    const key = toDateStr(due) + ' ' + a.time;
+    if (a.lastFired === key) continue;
+    a.lastFired = key;
+    if (!a.days.length) a.enabled = false;
+    Alarms.save();
+    ring(a);
+    return;
+  }
+}
+
+// Nachtmodus: Bildschirm bleibt (gedimmt) an, damit der Wecker sicher klingelt
+let wakeLock = null, nightTimer = null;
+async function requestWakeLock() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+function updateNight() {
+  const now = new Date();
+  $('#nightClock').textContent = toTimeStr(now);
+  const n = nextAlarm(now);
+  $('#nightSub').textContent = n ? `⏰ ${dayLabel(n.at)} ${n.alarm.time} · ${relIn(n.at - now)}` : 'Kein Wecker gestellt';
+}
+$('#nightBtn').onclick = async () => {
+  unlockAudio();
+  $('#night').hidden = false;
+  updateNight();
+  nightTimer = setInterval(updateNight, 15000);
+  await requestWakeLock();
+  try { document.documentElement.requestFullscreen && (await document.documentElement.requestFullscreen()); } catch (e) {}
+  const n = nextAlarm();
+  say(n ? `Gute Nacht. Ich wecke dich ${dayLabel(n.at).toLowerCase()} um ${n.alarm.time} Uhr.` : 'Gute Nacht. Es ist kein Wecker gestellt.');
+};
+$('#nightExit').onclick = () => {
+  $('#night').hidden = true;
+  clearInterval(nightTimer);
+  try { wakeLock && wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+  try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {}
+};
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !$('#night').hidden) requestWakeLock();
+  if (!document.hidden) checkAlarms();
+});
+
 // ---------- Kleinkram ----------
 let toastTimer;
 function toast(msg, alarm) {
@@ -593,16 +978,34 @@ function toast(msg, alarm) {
 }
 
 document.querySelectorAll('#filter button').forEach((b) =>
-  b.addEventListener('click', () => { filter = b.dataset.f; Prefs.set('filter', filter); render(); })
+  b.addEventListener('click', () => setView(b.dataset.f, VIEWS.indexOf(b.dataset.f) - VIEWS.indexOf(view)))
 );
+
+// Wischen zwischen Alle / Privat / Geschäftlich / Wecker
+let touch = null;
+$('main').addEventListener('touchstart', (e) => {
+  const t = e.touches[0]; touch = { x: t.clientX, y: t.clientY };
+}, { passive: true });
+$('main').addEventListener('touchend', (e) => {
+  if (!touch) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+  touch = null;
+  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  const i = VIEWS.indexOf(view) + (dx < 0 ? 1 : -1);
+  if (i >= 0 && i < VIEWS.length) setView(VIEWS[i], dx < 0 ? 1 : -1);
+}, { passive: true });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); checkReminders(); } });
 
 // ---------- Start ----------
 Store.load();
+Alarms.load();
 render();
 updateBanner();
 checkReminders();
 setInterval(() => { checkReminders(); render(); }, 20000);
+setInterval(checkAlarms, 3000);
+checkAlarms();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((r) => (swReg = r)).catch(() => {});
 }
