@@ -88,7 +88,21 @@
   .banner { background: rgba(255,176,87,.1); border: 1px solid rgba(255,176,87,.4); color: var(--warn);
     border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
   .banner button { background: none; border: 0; color: var(--text); text-decoration: underline; font: inherit; padding: 0; }
-  .seg button[data-f="wecker"] { flex: .55; }
+  .seg button[data-f="wecker"], .seg button[data-f="gedanken"] { flex: .55; }
+  .seg button[data-f="gedanken"].on { color: #d6a8ff; }
+  .hbtns { display: flex; gap: 8px; }
+  .sugg { background: rgba(255,176,87,.08); border: 1px solid rgba(255,176,87,.4); border-radius: var(--radius);
+    padding: 12px 14px; margin-bottom: 16px; }
+  .sugg .txt { font-size: 15px; }
+  .sugg .btns { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+  .sugg button { border-radius: 20px; padding: 8px 14px; font: inherit; font-size: 14px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--text); }
+  .sugg .yes { background: var(--warn); color: #000; border-color: var(--warn); font-weight: 600; }
+  .chk { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 15px; margin: 14px 0 4px; }
+  .chk input { width: 22px; height: 22px; flex: none; accent-color: var(--warn); }
+  .linkbtn { background: none; border: 0; color: var(--business); font: inherit; font-size: 14px; padding: 8px 0 0; }
+  .ev .meta a { color: var(--business); text-decoration: none; }
+  .quiet { color: var(--warn); }
   .seg button[data-f="wecker"].on { color: var(--warn); }
   main { touch-action: pan-y; }
   main.slide-l { animation: slideL .22s ease-out; }
@@ -140,12 +154,16 @@
 <header>
   <div class="top">
     <h1>Zentrale<small id="today"></small></h1>
-    <button class="iconbtn" id="speakBtn" aria-label="Tagesübersicht vorlesen">🔊</button>
+    <div class="hbtns">
+      <button class="iconbtn" id="speakBtn" aria-label="Vorlesen">🔊</button>
+      <button class="iconbtn" id="settingsBtn" aria-label="Einstellungen">⚙️</button>
+    </div>
   </div>
   <div class="seg" id="filter">
     <button data-f="all">Alle</button>
     <button data-f="privat">Privat</button>
     <button data-f="business">Geschäftlich</button>
+    <button data-f="gedanken" aria-label="Gedanken">💭</button>
     <button data-f="wecker" aria-label="Wecker">⏰</button>
   </div>
 </header>
@@ -155,13 +173,18 @@
     Erinnerungen sind aus. <button id="enableNotif">Benachrichtigungen erlauben</button>
   </div>
   <div id="calView">
+    <div id="wakeCard"></div>
     <div id="next"></div>
     <div id="list"></div>
   </div>
   <div id="alarmView" hidden>
     <button class="nightbtn" id="nightBtn">🌙 Nachtmodus starten</button>
     <div class="nighthint">Handy ans Ladekabel, Nachtmodus an – der Bildschirm bleibt gedimmt wach und der Wecker klingelt zuverlässig.</div>
+    <div id="wakeCard2"></div>
     <div id="alarmList"></div>
+  </div>
+  <div id="notesView" hidden>
+    <div id="noteList"></div>
   </div>
 </main>
 
@@ -178,6 +201,71 @@
     <div class="actions">
       <button type="button" class="danger" id="aDel">Löschen</button>
       <button type="button" id="aCancel">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Gedanke bearbeiten -->
+<dialog id="noteEd">
+  <form id="noteForm" method="dialog">
+    <h2>Gedanke</h2>
+    <textarea id="nText" rows="4"></textarea>
+    <label>Bereich</label>
+    <div class="ctx">
+      <label><input type="radio" name="nctx" value="privat"><span>Privat</span></label>
+      <label><input type="radio" name="nctx" value="business"><span>Geschäftlich</span></label>
+    </div>
+    <div class="actions">
+      <button type="button" id="nToEvent">→ Termin</button>
+      <button type="button" id="nDone">Erledigt ✓</button>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button type="button" class="danger" id="nDel">Löschen</button>
+      <button type="button" id="nCancel">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Nachricht -->
+<dialog id="msg">
+  <form method="dialog" onsubmit="return false">
+    <h2>Nachricht</h2>
+    <div class="row">
+      <div style="flex:1.3"><label for="mName">An</label><input id="mName" autocomplete="off"></div>
+      <div><label for="mPhone">Nummer</label><input id="mPhone" type="tel" placeholder="optional"></div>
+    </div>
+    <button type="button" class="linkbtn" id="mPick">📇 Aus Kontakten wählen</button>
+    <label for="mText">Text</label>
+    <textarea id="mText" rows="3"></textarea>
+    <div class="hint">Ohne Nummer wählst du den Kontakt in WhatsApp aus. Die Nummer merke ich mir für das nächste Mal.</div>
+    <div class="actions">
+      <button type="button" id="mCancel">Abbrechen</button>
+      <button type="button" id="mSms">SMS</button>
+      <button type="button" class="primary" id="mWa">WhatsApp</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Einstellungen -->
+<dialog id="settings">
+  <form id="setForm" method="dialog">
+    <h2>Einstellungen</h2>
+    <label class="chk"><input type="checkbox" id="sQuiet"> Feierabend: geschäftliche Erinnerungen stumm</label>
+    <div class="row">
+      <div><label for="sFrom">Ab</label><input id="sFrom" type="time"></div>
+      <div><label for="sTo">Bis</label><input id="sTo" type="time"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="sWeekend"> Wochenende ohne Geschäftliches</label>
+    <label for="sBuffer">Aufstehen vor dem ersten Termin (plus Wegzeit)</label>
+    <select id="sBuffer">
+      <option value="30">30 Min</option><option value="45">45 Min</option><option value="60">1 Std</option>
+      <option value="75">1 Std 15</option><option value="90">1,5 Std</option><option value="120">2 Std</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="sSpeak"> Eingaben laut bestätigen</label>
+    <div class="actions">
+      <button type="button" id="sCancel">Abbrechen</button>
       <button type="submit" class="primary">Speichern</button>
     </div>
   </form>
@@ -237,6 +325,15 @@
           <option value="-1">Nein</option><option value="0">Zum Termin</option><option value="5">5 Min vorher</option>
           <option value="15" selected>15 Min vorher</option><option value="30">30 Min vorher</option>
           <option value="60">1 Std vorher</option><option value="1440">1 Tag vorher</option>
+        </select></div>
+    </div>
+    <div class="row">
+      <div style="flex:1.6"><label for="fLoc">Ort</label><input id="fLoc" autocomplete="off" placeholder="optional"></div>
+      <div><label for="fTravel">Weg</label>
+        <select id="fTravel">
+          <option value="0">–</option><option value="10">10 Min</option><option value="15">15 Min</option>
+          <option value="20">20 Min</option><option value="30">30 Min</option><option value="45">45 Min</option>
+          <option value="60">1 Std</option><option value="90">1,5 Std</option><option value="120">2 Std</option>
         </select></div>
     </div>
     <label>Bereich</label>
@@ -428,16 +525,16 @@ function parseGerman(input) {
 
 // ---------- UI ----------
 const $ = (s) => document.querySelector(s);
-const VIEWS = ['all', 'privat', 'business', 'wecker'];
+const VIEWS = ['all', 'privat', 'business', 'gedanken', 'wecker'];
 let view = Prefs.get('view', 'all');
 if (!VIEWS.includes(view)) view = 'all';
-let filter = view === 'wecker' ? 'all' : view; // Kalender-Filter
+let filter = ['wecker', 'gedanken'].includes(view) ? 'all' : view; // Kalender-Filter
 let editingId = null;
 
 function setView(v, dir) {
   if (!VIEWS.includes(v) || v === view) return;
   view = v;
-  if (v !== 'wecker') filter = v;
+  if (!['wecker', 'gedanken'].includes(v)) filter = v;
   Prefs.set('view', v);
   const m = $('main');
   m.classList.remove('slide-l', 'slide-r');
@@ -454,9 +551,13 @@ function visibleEvents() {
 function render() {
   $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   document.querySelectorAll('#filter button').forEach((b) => b.classList.toggle('on', b.dataset.f === view));
-  $('#calView').hidden = view === 'wecker';
+  $('#calView').hidden = ['wecker', 'gedanken'].includes(view);
   $('#alarmView').hidden = view !== 'wecker';
-  if (view === 'wecker') { renderAlarms(); return; }
+  $('#notesView').hidden = view !== 'gedanken';
+  if (isQuiet()) $('#today').insertAdjacentHTML('beforeend', ' · <span class="quiet">🌙 Feierabend</span>');
+  if (view === 'wecker') { renderWakeCard($('#wakeCard2')); renderAlarms(); return; }
+  if (view === 'gedanken') { renderNotes(); return; }
+  if (view === 'all') renderWakeCard($('#wakeCard')); else $('#wakeCard').innerHTML = '';
 
   const now = new Date();
   const todayStart = dayStart(now);
@@ -501,8 +602,15 @@ function render() {
     el.querySelector('.title').textContent = e.title;
     const meta = [CONTEXTS[e.context].label];
     if (e.remind >= 0) meta.push('🔔');
+    if (e.travel) meta.push('🚗 ' + e.travel + ' Min');
     if (e.note) meta.push(e.note);
     el.querySelector('.meta').textContent = meta.join(' · ');
+    if (e.location) {
+      const a = document.createElement('a');
+      a.href = mapsLink(e.location); a.textContent = ' · 📍 ' + e.location;
+      a.onclick = (ev) => ev.stopPropagation();
+      el.querySelector('.meta').appendChild(a);
+    }
     el.onclick = () => openEditor(e);
     list.appendChild(el);
   }
@@ -520,6 +628,8 @@ function openEditor(ev, draft) {
   $('#fDur').value = String(d.duration ?? 60);
   $('#fRemind').value = String(d.remind ?? 15);
   $('#fNote').value = d.note || '';
+  $('#fLoc').value = d.location || '';
+  $('#fTravel').value = String(d.travel || 0);
   const ctx = d.context || (filter !== 'all' ? filter : Prefs.get('lastCtx', 'privat'));
   document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === ctx));
   $('#delBtn').hidden = !ev;
@@ -537,7 +647,10 @@ $('#form').addEventListener('submit', (e) => {
     remind: +$('#fRemind').value,
     context: ctx,
     note: $('#fNote').value.trim(),
+    location: $('#fLoc').value.trim(),
+    travel: +$('#fTravel').value,
     notified: false,
+    leaveNotified: false,
   };
   Store.upsert(ev);
   Prefs.set('lastCtx', ctx);
@@ -546,7 +659,7 @@ $('#form').addEventListener('submit', (e) => {
   const s = startOf(ev);
   const msg = `${ev.title}, ${dayLabel(s)} um ${toTimeStr(s)} Uhr, ${CONTEXTS[ctx].label.toLowerCase()}.`;
   toast('Gespeichert: ' + msg);
-  if (Prefs.get('speakConfirm', true)) say('Eingetragen: ' + msg);
+  if (Settings.speakConfirm) say('Eingetragen: ' + msg);
   if (ev.remind >= 0) askNotifPermission();
 });
 $('#cancelBtn').onclick = () => $('#editor').close();
@@ -601,6 +714,11 @@ $('#voiceOk').onclick = () => {
   const text = $('#transcript').value.trim();
   $('#voice').close();
   if (!text) return;
+  // Gedanke parken
+  if (view === 'gedanken' || /^\s*(notiz|gedanke|merk(e)? dir)/i.test(text)) { addNoteFromSpeech(text); return; }
+  // Nachricht: "Sag Bettina, dass ich später komme"
+  const mm = text.match(MSG_RE);
+  if (mm) { openMessage(mm[1], mm[2] ? mainClause(mm[3]) : mm[3]); return; }
   const p = parseGerman(text);
   if (p.wake) {
     // "Weck mich ..." → echter Wecker statt Termin
@@ -619,7 +737,7 @@ $('#voiceOk').onclick = () => {
     duration: p.remind === 0 && p.title === 'Wecken' ? 0 : undefined,
   });
 };
-$('#add').onclick = () => (view === 'wecker' ? openAlarmEditor(null) : openEditor(null));
+$('#add').onclick = () => (view === 'wecker' ? openAlarmEditor(null) : view === 'gedanken' ? openNoteEditor(null) : openEditor(null));
 
 // ---------- Sprache: Ausgabe ----------
 function say(text) {
@@ -638,6 +756,12 @@ $('#speakBtn').onclick = () => {
     const text = n ? `Nächster Wecker: ${dayLabel(n.at)} um ${n.alarm.time} Uhr.` : 'Kein Wecker gestellt.';
     say(text); toast(text); return;
   }
+  if (view === 'gedanken') {
+    const open = Notes.list.filter((n) => !n.done);
+    const text = open.length ? `${open.length} offene Gedanken: ` + open.slice(0, 5).map((n) => n.text).join('. ') + '.' : 'Keine offenen Gedanken.';
+    say(text); toast(text); return;
+  }
+  if (now.getHours() >= 18) { const t = eveningReview(); say(t); toast(t); return; }
   const todays = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(now) && startOf(e) >= now);
   const tomorrow = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(addDays(now, 1)));
   const part = filter === 'all' ? '' : ' im Bereich ' + CONTEXTS[filter].label;
@@ -692,11 +816,16 @@ async function fire(ev) {
 
 function checkReminders() {
   const now = Date.now();
+  const quiet = isQuiet();
   for (const ev of Store.events) {
-    if (ev.remind < 0 || ev.notified) continue;
     const s = startOf(ev).getTime();
+    const silent = quiet && ev.context === 'business';
+    if (ev.travel > 0 && !ev.leaveNotified && now >= s - (ev.travel + 5) * 60000 && now < s) {
+      ev.leaveNotified = true; Store.save(); if (!silent) fireLeave(ev);
+    }
+    if (ev.remind < 0 || ev.notified) continue;
     if (now >= s - ev.remind * 60000 && now < s + 3600000) {
-      ev.notified = true; Store.save(); fire(ev);
+      ev.notified = true; Store.save(); if (!silent) fire(ev);
     }
   }
 }
@@ -954,7 +1083,8 @@ $('#nightBtn').onclick = async () => {
   await requestWakeLock();
   try { document.documentElement.requestFullscreen && (await document.documentElement.requestFullscreen()); } catch (e) {}
   const n = nextAlarm();
-  say(n ? `Gute Nacht. Ich wecke dich ${dayLabel(n.at).toLowerCase()} um ${n.alarm.time} Uhr.` : 'Gute Nacht. Es ist kein Wecker gestellt.');
+  const review = new Date().getHours() >= 17 ? eveningReview() + ' ' : '';
+  say(review + (n ? `Gute Nacht. Ich wecke dich ${dayLabel(n.at).toLowerCase()} um ${n.alarm.time} Uhr.` : 'Gute Nacht. Es ist kein Wecker gestellt.'));
 };
 $('#nightExit').onclick = () => {
   $('#night').hidden = true;
@@ -967,6 +1097,249 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && !$('#night').hidden) requestWakeLock();
   if (!document.hidden) checkAlarms();
 });
+
+// ---------- Einstellungen ----------
+const Settings = Object.assign(
+  { quietOn: true, quietFrom: '19:00', quietTo: '08:00', weekendOff: true, wakeBuffer: 75, speakConfirm: true },
+  Prefs.get('settings', {})
+);
+const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+
+// Feierabend: geschäftliche Erinnerungen bleiben stumm
+function isQuiet(d = new Date()) {
+  if (!Settings.quietOn) return false;
+  if (Settings.weekendOff && (d.getDay() === 0 || d.getDay() === 6)) return true;
+  const m = d.getHours() * 60 + d.getMinutes(), a = toMin(Settings.quietFrom), b = toMin(Settings.quietTo);
+  return a > b ? m >= a || m < b : m >= a && m < b;
+}
+
+$('#settingsBtn').onclick = () => {
+  $('#sQuiet').checked = Settings.quietOn;
+  $('#sFrom').value = Settings.quietFrom;
+  $('#sTo').value = Settings.quietTo;
+  $('#sWeekend').checked = Settings.weekendOff;
+  $('#sBuffer').value = String(Settings.wakeBuffer);
+  $('#sSpeak').checked = Settings.speakConfirm;
+  $('#settings').showModal();
+};
+$('#sCancel').onclick = () => $('#settings').close();
+$('#setForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  Object.assign(Settings, {
+    quietOn: $('#sQuiet').checked, quietFrom: $('#sFrom').value || '19:00', quietTo: $('#sTo').value || '08:00',
+    weekendOff: $('#sWeekend').checked, wakeBuffer: +$('#sBuffer').value, speakConfirm: $('#sSpeak').checked,
+  });
+  Prefs.set('settings', Settings);
+  $('#settings').close();
+  render();
+  toast('Einstellungen gespeichert');
+});
+
+// ---------- Gedanken (Notizen parken) ----------
+const Notes = {
+  KEY: 'zentrale.notes.v1',
+  list: [],
+  load() { try { this.list = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch (e) {} },
+  upsert(n) { const i = this.list.findIndex((x) => x.id === n.id); if (i >= 0) this.list[i] = n; else this.list.unshift(n); this.save(); },
+  remove(id) { this.list = this.list.filter((n) => n.id !== id); this.save(); },
+};
+
+function detectContext(text) {
+  if (R('geschäftlich|beruflich|747|büro|kunden?|meeting|dreh|agentur').test(text)) return 'business';
+  if (R('privat|privater|private').test(text)) return 'privat';
+  return null;
+}
+function cleanNote(text) {
+  let t = text.replace(R('notiz|gedanke|merk(?:e)?\\s+dir|geschäftlich|privat', 'giu'), ' ');
+  t = t.replace(/^\s*[:,-]?\s*/, '').replace(/\s+/g, ' ').trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function addNoteFromSpeech(text) {
+  const n = { id: uid(), text: cleanNote(text) || text, context: detectContext(text) || (filter !== 'all' ? filter : 'privat'),
+    created: new Date().toISOString(), done: false };
+  Notes.upsert(n);
+  if (view !== 'gedanken') setView('gedanken', 1); else render();
+  toast('Gedanke geparkt');
+  if (Settings.speakConfirm) say('Notiert.');
+}
+
+function renderNotes() {
+  const el = $('#noteList');
+  el.innerHTML = '';
+  const open = Notes.list.filter((n) => !n.done), done = Notes.list.filter((n) => n.done);
+  if (!Notes.list.length) {
+    el.innerHTML = '<div class="empty"><b>Kopf frei?</b>Tippe auf 🎙 und sprich einfach drauflos –<br>alles landet hier und wartet auf dich.</div>';
+    return;
+  }
+  const row = (n) => {
+    const r = document.createElement('div');
+    r.className = 'ev note' + (n.done ? ' past' : '');
+    const c = new Date(n.created);
+    r.innerHTML = `<div class="bar" style="background:${CONTEXTS[n.context].color}"></div>
+      <div class="body"><div class="title"></div><div class="meta"></div></div>`;
+    r.querySelector('.title').textContent = n.text;
+    r.querySelector('.meta').textContent = `${CONTEXTS[n.context].label} · ${dayLabel(c)} ${toTimeStr(c)}`;
+    r.onclick = () => openNoteEditor(n);
+    return r;
+  };
+  if (open.length) {
+    const h = document.createElement('div'); h.className = 'day'; h.textContent = `Offen · ${open.length}`; el.appendChild(h);
+    open.forEach((n) => el.appendChild(row(n)));
+  }
+  if (done.length) {
+    const h = document.createElement('div'); h.className = 'day'; h.textContent = `Erledigt · ${done.length}`; el.appendChild(h);
+    done.slice(0, 20).forEach((n) => el.appendChild(row(n)));
+  }
+}
+
+let editingNote = null;
+function openNoteEditor(n) {
+  editingNote = n;
+  $('#nText').value = n ? n.text : '';
+  const ctx = n ? n.context : filter !== 'all' ? filter : 'privat';
+  document.querySelectorAll('input[name=nctx]').forEach((r) => (r.checked = r.value === ctx));
+  $('#nDel').hidden = $('#nDone').hidden = $('#nToEvent').hidden = !n;
+  $('#nDone').textContent = n && n.done ? 'Wieder öffnen' : 'Erledigt ✓';
+  $('#noteEd').showModal();
+}
+function noteFromForm() {
+  return { ...(editingNote || { id: uid(), created: new Date().toISOString(), done: false }),
+    text: $('#nText').value.trim(), context: document.querySelector('input[name=nctx]:checked')?.value || 'privat' };
+}
+$('#noteForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const n = noteFromForm();
+  if (n.text) Notes.upsert(n);
+  $('#noteEd').close(); render();
+});
+$('#nCancel').onclick = () => $('#noteEd').close();
+$('#nDel').onclick = () => { Notes.remove(editingNote.id); $('#noteEd').close(); render(); };
+$('#nDone').onclick = () => { const n = noteFromForm(); n.done = !n.done; Notes.upsert(n); $('#noteEd').close(); render(); };
+$('#nToEvent').onclick = () => {
+  const n = noteFromForm();
+  $('#noteEd').close();
+  const p = parseGerman(n.text);
+  n.done = true; Notes.upsert(n);
+  openEditor(null, { title: p.title, start: p.start, context: n.context });
+};
+
+// ---------- Kluger Wecker: Vorschlag aus dem ersten Termin morgen ----------
+function wakeSuggestion() {
+  const now = new Date();
+  if (now.getHours() < 16) return null;
+  const tmr = addDays(dayStart(now), 1);
+  const first = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(tmr)).sort((a, b) => startOf(a) - startOf(b))[0];
+  if (!first) return null;
+  const s = startOf(first);
+  const at = new Date(s.getTime() - (Settings.wakeBuffer + (first.travel || 0)) * 60000);
+  at.setMinutes(Math.floor(at.getMinutes() / 5) * 5, 0, 0);
+  if (at < now) return null;
+  const n = nextAlarm(now);
+  if (n && toDateStr(n.at) === toDateStr(tmr) && n.at <= at) return null; // schon früh genug gestellt
+  if (Prefs.get('wakeDismissed', '') === toDateStr(tmr)) return null;
+  return { first, at, existing: n && toDateStr(n.at) === toDateStr(tmr) ? n : null };
+}
+function renderWakeCard(el) {
+  const sug = wakeSuggestion();
+  if (!sug) { el.innerHTML = ''; return; }
+  const s = startOf(sug.first);
+  el.innerHTML = `<div class="sugg"><div class="txt"></div>
+    <div class="btns"><button class="no">Nein</button><button class="yes">Wecker ${toTimeStr(sug.at)}</button></div></div>`;
+  el.querySelector('.txt').textContent = sug.existing
+    ? `☀️ Morgen um ${toTimeStr(s)}: ${sug.first.title}. Dein Wecker (${sug.existing.alarm.time}) ist knapp – früher wecken?`
+    : `☀️ Morgen um ${toTimeStr(s)}: ${sug.first.title}. Noch kein Wecker gestellt.`;
+  el.querySelector('.no').onclick = () => { Prefs.set('wakeDismissed', toDateStr(sug.at)); render(); };
+  el.querySelector('.yes').onclick = () => {
+    Alarms.upsert({ id: uid(), time: toTimeStr(sug.at), label: 'Vor: ' + sug.first.title, days: [], date: toDateStr(sug.at), enabled: true });
+    unlockAudio();
+    const msg = `Wecker gestellt auf ${toTimeStr(sug.at)} Uhr.`;
+    toast(msg); if (Settings.speakConfirm) say(msg);
+    render();
+  };
+}
+
+// ---------- Abendrückblick ----------
+function eveningReview() {
+  const now = new Date();
+  const by = (a, b) => startOf(a) - startOf(b);
+  const today = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(now));
+  const tmr = Store.events.filter((e) => toDateStr(startOf(e)) === toDateStr(addDays(now, 1))).sort(by);
+  const open = Notes.list.filter((n) => !n.done);
+  const parts = ['Dein Tagesrückblick.'];
+  parts.push(today.length ? `Heute ${today.length === 1 ? 'hattest du einen Termin' : `hattest du ${today.length} Termine`}.` : 'Heute war dein Kalender leer.');
+  if (open.length) {
+    parts.push(`${open.length === 1 ? 'Ein Gedanke ist' : open.length + ' Gedanken sind'} noch offen` +
+      (open.length ? ', zum Beispiel: ' + open.slice(0, 2).map((n) => n.text).join(', und ') + '.' : '.'));
+  }
+  if (tmr.length) {
+    parts.push(`Morgen ${tmr.length === 1 ? 'steht ein Termin an' : `stehen ${tmr.length} Termine an`}, der erste um ${toTimeStr(startOf(tmr[0]))}: ${tmr[0].title}.`);
+  } else parts.push('Morgen ist der Kalender frei.');
+  const n = nextAlarm(now);
+  const sug = wakeSuggestion();
+  if (n && toDateStr(n.at) === toDateStr(addDays(now, 1))) parts.push(`Dein Wecker steht auf ${n.alarm.time} Uhr.`);
+  if (sug) parts.push(`Ich schlage vor, dich um ${toTimeStr(sug.at)} Uhr zu wecken.`);
+  return parts.join(' ');
+}
+
+// ---------- Losfahren ----------
+const mapsLink = (place) => 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(place);
+async function fireLeave(ev) {
+  const where = ev.location ? ` nach ${ev.location}` : '';
+  const text = `In 5 Minuten losfahren${where} – ${ev.title} um ${toTimeStr(startOf(ev))} Uhr, ${ev.travel} Minuten Weg.`;
+  if (notifState() === 'granted' && swReg) {
+    try { await swReg.showNotification('🚗 Gleich los: ' + ev.title, { body: text, tag: 'leave-' + ev.id, vibrate: [300, 150, 300] }); } catch (e) {}
+  }
+  if (document.visibilityState === 'visible') { beep(); toast('🚗 ' + text, true); say(text); }
+}
+
+// ---------- Nachrichten per Sprache ----------
+const MSG_RE = /^\s*(?:sag|sage|schreib|schreibe|nachricht an|whatsapp an)\s+([\p{L}-]+)\s*[,:]?\s*(dass\s+)?(.+)$/iu;
+// "dass ich später komme" → "ich komme später" (Verb aus Nebensatz nach vorn holen)
+function mainClause(t) {
+  const w = t.trim().split(/\s+/);
+  if (w.length >= 3 && /^(ich|wir|du|er|sie|es)$/i.test(w[0])) w.splice(1, 0, w.pop());
+  return w.join(' ');
+}
+function contacts() { return Prefs.get('contacts', {}); }
+function openMessage(name, text) {
+  $('#mName').value = name || '';
+  $('#mPhone').value = (name && contacts()[name.toLowerCase()]) || '';
+  $('#mText').value = text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+  $('#mPick').hidden = !('contacts' in navigator && 'select' in navigator.contacts);
+  $('#msg').showModal();
+}
+function normPhone(p) {
+  let d = (p || '').replace(/[^\d+]/g, '');
+  if (d.startsWith('+')) d = d.slice(1);
+  else if (d.startsWith('00')) d = d.slice(2);
+  else if (d.startsWith('0')) d = '49' + d.slice(1);
+  return d;
+}
+function rememberContact() {
+  const name = $('#mName').value.trim(), phone = $('#mPhone').value.trim();
+  if (name && phone) { const c = contacts(); c[name.toLowerCase()] = phone; Prefs.set('contacts', c); }
+}
+$('#mPick').onclick = async () => {
+  try {
+    const [c] = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+    if (c) { if (c.tel && c.tel[0]) $('#mPhone').value = c.tel[0]; if (!$('#mName').value && c.name) $('#mName').value = c.name[0]; }
+  } catch (e) {}
+};
+$('#mCancel').onclick = () => $('#msg').close();
+$('#mWa').onclick = () => {
+  rememberContact();
+  const num = normPhone($('#mPhone').value);
+  const url = `https://wa.me/${num}?text=${encodeURIComponent($('#mText').value)}`;
+  $('#msg').close();
+  location.href = url;
+};
+$('#mSms').onclick = () => {
+  rememberContact();
+  const url = `sms:${$('#mPhone').value.replace(/\s/g, '')}?body=${encodeURIComponent($('#mText').value)}`;
+  $('#msg').close();
+  location.href = url;
+};
 
 // ---------- Kleinkram ----------
 let toastTimer;
@@ -1000,6 +1373,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { re
 // ---------- Start ----------
 Store.load();
 Alarms.load();
+Notes.load();
 render();
 updateBanner();
 checkReminders();
