@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Zentrale</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #20242d; --line: #2a2f3a;
+    --text: #e8eaf0; --muted: #8a91a0;
+    --privat: #4fd1a5; --business: #7aa2ff; --warn: #ffb057;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding: env(safe-area-inset-top) 0 calc(110px + env(safe-area-inset-bottom)); min-height: 100vh; }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(15,17,21,.92);
+    backdrop-filter: blur(10px); padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .2px; }
+  h1 small { display: block; font-size: 13px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .iconbtn { background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    width: 42px; height: 42px; border-radius: 50%; font-size: 18px; }
+  .seg { display: flex; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+  .seg button { flex: 1; background: none; border: 0; color: var(--muted); padding: 8px 4px;
+    border-radius: 9px; font: inherit; font-size: 14px; }
+  .seg button.on { background: var(--panel2); color: var(--text); }
+  .seg button[data-f="privat"].on { color: var(--privat); }
+  .seg button[data-f="business"].on { color: var(--business); }
+  main { padding: 14px 16px; }
+  .next { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 18px; border-left: 4px solid var(--muted); }
+  .next .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .next .t { font-size: 19px; font-weight: 600; margin: 4px 0 2px; }
+  .next .s { color: var(--muted); font-size: 14px; }
+  .day { margin: 18px 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .ev { display: flex; gap: 12px; align-items: stretch; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+  .ev.past { opacity: .45; }
+  .ev .bar { width: 4px; border-radius: 4px; flex: none; }
+  .ev .time { width: 52px; flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .ev .time small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+  .ev .body { flex: 1; min-width: 0; }
+  .ev .title { font-weight: 500; overflow-wrap: anywhere; }
+  .ev .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .empty { text-align: center; color: var(--muted); padding: 50px 20px; }
+  .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+  .fab { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 18px;
+    padding: 14px 0 calc(18px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--bg) 60%, transparent); z-index: 6; }
+  .fab button { border: 0; border-radius: 50%; color: #0f1115; font-size: 26px; }
+  #mic { width: 72px; height: 72px; background: var(--text); }
+  #mic.live { background: #ff6b6b; animation: pulse 1.2s infinite; }
+  #add { width: 56px; height: 56px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); align-self: center; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,107,107,.6)} 100%{box-shadow:0 0 0 22px rgba(255,107,107,0)} }
+  dialog { width: min(560px, 100%); max-height: 92vh; margin: auto auto 0; border: 1px solid var(--line);
+    border-radius: 22px 22px 0 0; background: var(--panel); color: var(--text); padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h2 { margin: 0 0 12px; font-size: 18px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 12px; font: inherit; }
+  textarea { resize: vertical; min-height: 70px; }
+  .row { display: flex; gap: 10px; } .row > div { flex: 1; }
+  .ctx { display: flex; gap: 8px; }
+  .ctx label { flex: 1; margin: 0; }
+  .ctx input { display: none; }
+  .ctx span { display: block; text-align: center; padding: 11px; border-radius: 10px; border: 1px solid var(--line);
+    color: var(--muted); font-size: 15px; }
+  .ctx input[value="privat"]:checked + span { border-color: var(--privat); color: var(--privat); background: rgba(79,209,165,.08); }
+  .ctx input[value="business"]:checked + span { border-color: var(--business); color: var(--business); background: rgba(122,162,255,.08); }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .actions button { flex: 1; padding: 13px; border-radius: 12px; border: 1px solid var(--line); font: inherit;
+    background: var(--panel2); color: var(--text); }
+  .actions .primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  .actions .danger { color: #ff6b6b; flex: .6; }
+  .transcript { min-height: 90px; font-size: 18px; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: calc(120px + env(safe-area-inset-bottom)); z-index: 20;
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+    transform: translateY(20px); opacity: 0; transition: .25s; pointer-events: none; }
+  #toast.show { transform: none; opacity: 1; }
+  #toast.alarm { border-color: var(--warn); }
+  .banner { background: rgba(255,176,87,.1); border: 1px solid rgba(255,176,87,.4); color: var(--warn);
+    border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
+  .banner button { background: none; border: 0; color: var(--text); text-decoration: underline; font: inherit; padding: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <h1>Zentrale<small id="today"></small></h1>
+    <button class="iconbtn" id="speakBtn" aria-label="Tagesübersicht vorlesen">🔊</button>
+  </div>
+  <div class="seg" id="filter">
+    <button data-f="all">Alle</button>
+    <button data-f="privat">Privat</button>
+    <button data-f="business">Geschäftlich</button>
+  </div>
+</header>
+
+<main>
+  <div id="notifBanner" class="banner" hidden>
+    Erinnerungen sind aus. <button id="enableNotif">Benachrichtigungen erlauben</button>
+  </div>
+  <div id="next"></div>
+  <div id="list"></div>
+</main>
+
+<div class="fab">
+  <button id="mic" aria-label="Sprechen">🎙</button>
+  <button id="add" aria-label="Neuer Termin">+</button>
+</div>
+
+<!-- Spracheingabe -->
+<dialog id="voice">
+  <h2 id="voiceTitle">Ich höre zu …</h2>
+  <textarea id="transcript" class="transcript" placeholder="z. B. „Morgen um 10 Uhr Zahnarzt“ oder „Freitag 14:30 Meeting mit Rikke geschäftlich“"></textarea>
+  <div class="hint" id="voiceHint"></div>
+  <div class="actions">
+    <button type="button" id="voiceCancel">Abbrechen</button>
+    <button type="button" id="voiceAgain">Nochmal</button>
+    <button type="button" class="primary" id="voiceOk">Weiter</button>
+  </div>
+</dialog>
+
+<!-- Termin bearbeiten -->
+<dialog id="editor">
+  <form id="form" method="dialog">
+    <h2 id="edTitle">Neuer Termin</h2>
+    <label for="fTitle">Was</label>
+    <input id="fTitle" required autocomplete="off">
+    <div class="row">
+      <div><label for="fDate">Datum</label><input id="fDate" type="date" required></div>
+      <div><label for="fTime">Uhrzeit</label><input id="fTime" type="time" required></div>
+    </div>
+    <div class="row">
+      <div><label for="fDur">Dauer</label>
+        <select id="fDur">
+          <option value="0">–</option><option value="15">15 Min</option><option value="30">30 Min</option>
+          <option value="60" selected>1 Std</option><option value="90">1,5 Std</option><option value="120">2 Std</option>
+          <option value="240">4 Std</option><option value="480">Ganztägig</option>
+        </select></div>
+      <div><label for="fRemind">Erinnern</label>
+        <select id="fRemind">
+          <option value="-1">Nein</option><option value="0">Zum Termin</option><option value="5">5 Min vorher</option>
+          <option value="15" selected>15 Min vorher</option><option value="30">30 Min vorher</option>
+          <option value="60">1 Std vorher</option><option value="1440">1 Tag vorher</option>
+        </select></div>
+    </div>
+    <label>Bereich</label>
+    <div class="ctx">
+      <label><input type="radio" name="ctx" value="privat"><span>Privat</span></label>
+      <label><input type="radio" name="ctx" value="business"><span>Geschäftlich</span></label>
+    </div>
+    <label for="fNote">Notiz</label>
+    <textarea id="fNote" rows="2"></textarea>
+    <div class="actions">
+      <button type="button" class="danger" id="delBtn">Löschen</button>
+      <button type="button" id="cancelBtn">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   Zentrale – v0.1
+   Eigener lokaler Kalender. Store ist bewusst gekapselt,
+   damit später ein Google-Calendar-Adapter (2 Kalender:
+   privat / geschäftlich) eingesetzt werden kann.
+   ========================================================= */
+
+const CONTEXTS = {
+  privat:   { label: 'Privat',       color: 'var(--privat)' },
+  business: { label: 'Geschäftlich', color: 'var(--business)' },
+};
+
+// ---------- Speicher (lokal) ----------
+const Store = {
+  KEY: 'zentrale.events.v1',
+  events: [],
+  load() {
+    try { this.events = JSON.parse(localStorage.getItem(this.KEY) || '[]'); } catch (e) { /* Speicher nicht verfügbar */ }
+    return this.events;
+  },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.events)); } catch (e) {} },
+  upsert(ev) {
+    const i = this.events.findIndex((e) => e.id === ev.id);
+    if (i >= 0) this.events[i] = ev; else this.events.push(ev);
+    this.save();
+  },
+  remove(id) { this.events = this.events.filter((e) => e.id !== id); this.save(); },
+};
+
+const Prefs = {
+  get(k, d) { try { const v = localStorage.getItem('zentrale.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('zentrale.' + k, JSON.stringify(v)); } catch (e) {} },
+};
+
+// ---------- Datums-Helfer ----------
+const pad = (n) => String(n).padStart(2, '0');
+const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const toDateStr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const toTimeStr = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const startOf = (ev) => new Date(ev.start); // "YYYY-MM-DDTHH:mm" = lokale Zeit
+const WD = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+const MONTHS = ['januar', 'februar', 'märz', 'april', 'mai', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'dezember'];
+
+function dayLabel(d) {
+  const diff = Math.round((dayStart(d) - dayStart(new Date())) / 86400000);
+  if (diff === 0) return 'Heute';
+  if (diff === 1) return 'Morgen';
+  if (diff === 2) return 'Übermorgen';
+  return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+function relIn(ms) {
+  const m = Math.round(ms / 60000);
+  if (m < 1) return 'jetzt';
+  if (m < 60) return `in ${m} Min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  if (h < 24) return r ? `in ${h} Std ${r} Min` : `in ${h} Std`;
+  const days = Math.round(h / 24);
+  return days === 1 ? 'morgen' : `in ${days} Tagen`;
+}
+
+// ---------- Sprachverständnis (einfacher deutscher Parser) ----------
+// Wortgrenzen, die auch mit Umlauten funktionieren (\b kann das nicht)
+const R = (src, flags = 'iu') => new RegExp('(?<![\\p{L}\\d])(?:' + src + ')(?![\\p{L}\\d])', flags);
+
+function parseGerman(input) {
+  let t = ' ' + input.replace(/[,!?]/g, ' ') + ' ';
+  const now = new Date();
+  const today = dayStart(now);
+  let date = null, hh = null, mm = 0, context = null, remind = null, m;
+  const cut = (re) => { t = t.replace(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'), ' '); };
+  const has = (re) => re.test(t);
+
+  // Bereich
+  if (has(R('geschäftlich|beruflich|747|büro|kunden?|meeting|dreh|agentur'))) context = 'business';
+  if (has(R('privat|privater|private'))) context = 'privat';
+  cut(R('geschäftlich|beruflich|privat|privater|private'));
+
+  // Wecken
+  const wake = has(R('weck(?:e|en)?\\s+mich'));
+  if (wake) { remind = 0; cut(R('weck(?:e|en)?\\s+mich')); }
+
+  // Relative Zeit: "in 20 Minuten", "in 2 Stunden"
+  m = t.match(R('in\\s+(\\d+|einer|einem|zwei|drei)\\s+(minuten?|min|stunden?|std)'));
+  if (m) {
+    const words = { einer: 1, einem: 1, zwei: 2, drei: 3 };
+    const n = words[m[1].toLowerCase()] || parseInt(m[1], 10);
+    const target = new Date(now.getTime() + n * (/^st/i.test(m[2]) ? 3600000 : 60000));
+    date = dayStart(target); hh = target.getHours(); mm = target.getMinutes();
+    cut(R(m[0].trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+
+  // Numerisches Datum zuerst: "3.12." / "15.11.2026"
+  m = t.match(R('(?:am\\s+)?(\\d{1,2})\\.(\\d{1,2})\\.(\\d{2,4})?'));
+  if (!date && m) {
+    let y = m[3] ? +m[3] : now.getFullYear();
+    if (y < 100) y += 2000;
+    date = new Date(y, +m[2] - 1, +m[1]);
+    if (!m[3] && date < today) date.setFullYear(y + 1);
+    t = t.replace(m[0], ' ');
+  }
+  // "15. Dezember", "am 3 Dezember"
+  m = t.match(R('(?:am\\s+)?(\\d{1,2})\\.?\\s+(' + MONTHS.join('|') + ')'));
+  if (!date && m) {
+    date = new Date(now.getFullYear(), MONTHS.indexOf(m[2].toLowerCase()), +m[1]);
+    if (date < today) date.setFullYear(date.getFullYear() + 1);
+    t = t.replace(m[0], ' ');
+  }
+
+  // Uhrzeit: "um 14:30", "14.30 Uhr", "um 9 Uhr 15", "um 9"
+  if (hh === null) {
+    m = t.match(R('(?:um\\s+)?(\\d{1,2})[:.](\\d{2})(?:\\s*uhr)?')) ||
+        t.match(R('(?:um\\s+)?(\\d{1,2})\\s*uhr(?:\\s+(\\d{1,2}))?')) ||
+        t.match(R('um\\s+(\\d{1,2})'));
+    if (m) { hh = +m[1]; mm = m[2] ? +m[2] : 0; t = t.replace(m[0], ' '); }
+  }
+  // Tageszeit-Wörter
+  if (hh !== null && hh < 12 && has(R('abends?|nachmittags?'))) hh += 12;
+  if (hh === null) {
+    if (has(R('früh|morgens'))) hh = 7;
+    else if (has(R('mittags?'))) hh = 12;
+    else if (has(R('nachmittags?'))) hh = 15;
+    else if (has(R('abends?'))) hh = 19;
+  }
+  cut(R('früh|morgens|mittags?|nachmittags?|abends?'));
+
+  // Relative Tage
+  if (!date) {
+    if (has(R('übermorgen'))) date = addDays(today, 2);
+    else if (has(R('morgen'))) date = addDays(today, 1);
+    else if (has(R('heute'))) date = today;
+  }
+  cut(R('übermorgen|morgen|heute'));
+
+  // Wochentage
+  if (!date) {
+    WD.forEach((w, i) => {
+      if (date) return;
+      const re = R('(?:am\\s+|nächsten\\s+|kommenden\\s+)?' + w);
+      if (has(re)) {
+        let diff = (i - now.getDay() + 7) % 7;
+        if (diff === 0) diff = 7;
+        date = addDays(today, diff);
+        cut(re);
+      }
+    });
+  }
+  if (!date && has(R('nächste\\s+woche'))) date = addDays(today, 7 - ((now.getDay() + 6) % 7));
+  cut(R('nächste\\s+woche'));
+
+  // Keine Angaben → nächste volle Stunde
+  if (hh === null && !date) { const n = new Date(now.getTime() + 3600000); date = dayStart(n); hh = n.getHours(); }
+  if (!date) {
+    date = today;
+    if (hh !== null && (hh < now.getHours() || (hh === now.getHours() && mm <= now.getMinutes()))) date = addDays(today, 1);
+  }
+  if (hh === null) hh = 9;
+
+  // Titel säubern (Groß-/Kleinschreibung bleibt erhalten)
+  let title = t
+    .replace(R('bitte|trag(?:e)?|mir|ein(?:en|e)?|eintragen|termin|neuer|neuen|erinnere|erinner|mich|daran|dass|ich|habe|hab|muss|am|um|uhr|für|bei', 'giu'), ' ')
+    .replace(/\s+/g, ' ').trim();
+  if (!title) title = wake ? 'Wecken' : 'Termin';
+  title = title.charAt(0).toUpperCase() + title.slice(1);
+
+  const start = new Date(date); start.setHours(hh, mm, 0, 0);
+  return { title, start, context, remind };
+}
+
+// ---------- UI ----------
+const $ = (s) => document.querySelector(s);
+let filter = Prefs.get('filter', 'all');
+let editingId = null;
+
+function visibleEvents() {
+  return Store.events
+    .filter((e) => filter === 'all' || e.context === filter)
+    .sort((a, b) => startOf(a) - startOf(b));
+}
+
+function render() {
+  $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.querySelectorAll('#filter button').forEach((b) => b.classList.toggle('on', b.dataset.f === filter));
+
+  const now = new Date();
+  const todayStart = dayStart(now);
+  const evs = visibleEvents().filter((e) => startOf(e) >= todayStart);
+
+  // Nächster Termin
+  const next = evs.find((e) => startOf(e).getTime() + (e.duration || 0) * 60000 > now.getTime());
+  const nextEl = $('#next');
+  if (next) {
+    const s = startOf(next);
+    const running = s <= now;
+    nextEl.innerHTML = `<div class="next" style="border-left-color:${CONTEXTS[next.context].color}">
+      <div class="lbl">${running ? 'Läuft gerade' : 'Als Nächstes · ' + relIn(s - now)}</div>
+      <div class="t"></div>
+      <div class="s">${dayLabel(s)}, ${toTimeStr(s)} Uhr · ${CONTEXTS[next.context].label}</div></div>`;
+    nextEl.querySelector('.t').textContent = next.title;
+    nextEl.firstChild.onclick = () => openEditor(next);
+  } else nextEl.innerHTML = '';
+
+  // Liste nach Tagen
+  const list = $('#list');
+  list.innerHTML = '';
+  if (!evs.length) {
+    list.innerHTML = `<div class="empty"><b>Keine Termine</b>Tippe auf 🎙 und sag z. B.<br>„Morgen um 10 Uhr Zahnarzt“</div>`;
+    return;
+  }
+  let lastDay = '';
+  for (const e of evs) {
+    const s = startOf(e);
+    const dk = toDateStr(s);
+    if (dk !== lastDay) {
+      const h = document.createElement('div');
+      h.className = 'day'; h.textContent = dayLabel(s);
+      list.appendChild(h); lastDay = dk;
+    }
+    const el = document.createElement('div');
+    const end = new Date(s.getTime() + (e.duration || 0) * 60000);
+    el.className = 'ev' + (end < now ? ' past' : '');
+    el.innerHTML = `<div class="bar" style="background:${CONTEXTS[e.context].color}"></div>
+      <div class="time">${toTimeStr(s)}${e.duration ? `<small>${toTimeStr(end)}</small>` : ''}</div>
+      <div class="body"><div class="title"></div><div class="meta"></div></div>`;
+    el.querySelector('.title').textContent = e.title;
+    const meta = [CONTEXTS[e.context].label];
+    if (e.remind >= 0) meta.push('🔔');
+    if (e.note) meta.push(e.note);
+    el.querySelector('.meta').textContent = meta.join(' · ');
+    el.onclick = () => openEditor(e);
+    list.appendChild(el);
+  }
+}
+
+// ---------- Editor ----------
+function openEditor(ev, draft) {
+  editingId = ev ? ev.id : null;
+  const d = ev ? { ...ev, start: startOf(ev) } : draft || {};
+  const start = d.start || new Date(Math.ceil(Date.now() / 3600000) * 3600000);
+  $('#edTitle').textContent = ev ? 'Termin bearbeiten' : 'Neuer Termin';
+  $('#fTitle').value = d.title || '';
+  $('#fDate').value = toDateStr(start);
+  $('#fTime').value = toTimeStr(start);
+  $('#fDur').value = String(d.duration ?? 60);
+  $('#fRemind').value = String(d.remind ?? 15);
+  $('#fNote').value = d.note || '';
+  const ctx = d.context || (filter !== 'all' ? filter : Prefs.get('lastCtx', 'privat'));
+  document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === ctx));
+  $('#delBtn').hidden = !ev;
+  $('#editor').showModal();
+}
+
+$('#form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const ctx = document.querySelector('input[name=ctx]:checked')?.value || 'privat';
+  const ev = {
+    id: editingId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+    title: $('#fTitle').value.trim() || 'Termin',
+    start: `${$('#fDate').value}T${$('#fTime').value}`,
+    duration: +$('#fDur').value,
+    remind: +$('#fRemind').value,
+    context: ctx,
+    note: $('#fNote').value.trim(),
+    notified: false,
+  };
+  Store.upsert(ev);
+  Prefs.set('lastCtx', ctx);
+  $('#editor').close();
+  render();
+  const s = startOf(ev);
+  const msg = `${ev.title}, ${dayLabel(s)} um ${toTimeStr(s)} Uhr, ${CONTEXTS[ctx].label.toLowerCase()}.`;
+  toast('Gespeichert: ' + msg);
+  if (Prefs.get('speakConfirm', true)) say('Eingetragen: ' + msg);
+  if (ev.remind >= 0) askNotifPermission();
+});
+$('#cancelBtn').onclick = () => $('#editor').close();
+$('#delBtn').onclick = () => {
+  if (editingId) { Store.remove(editingId); toast('Gelöscht'); }
+  $('#editor').close(); render();
+};
+
+// ---------- Sprache: Eingabe ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+
+function startListening() {
+  const ta = $('#transcript');
+  ta.value = '';
+  $('#voice').showModal();
+  if (!SR) {
+    $('#voiceTitle').textContent = 'Sag oder tippe es';
+    $('#voiceHint').textContent = 'Spracherkennung ist hier nicht verfügbar – nutze das Mikrofon auf der Tastatur.';
+    ta.focus();
+    return;
+  }
+  $('#voiceTitle').textContent = 'Ich höre zu …';
+  $('#voiceHint').textContent = 'Sprich einfach – du kannst den Text danach noch ändern.';
+  rec = new SR();
+  rec.lang = 'de-DE';
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.onresult = (e) => {
+    ta.value = Array.from(e.results).map((r) => r[0].transcript).join(' ');
+  };
+  rec.onerror = (e) => {
+    $('#voiceTitle').textContent = 'Sag oder tippe es';
+    $('#voiceHint').textContent = e.error === 'not-allowed'
+      ? 'Mikrofon ist blockiert – erlaube es in den Browser-Einstellungen.'
+      : 'Nicht verstanden – tippe auf „Nochmal“ oder schreib es.';
+  };
+  rec.onend = () => {
+    $('#mic').classList.remove('live');
+    if ($('#voiceTitle').textContent === 'Ich höre zu …') $('#voiceTitle').textContent = 'Stimmt das so?';
+  };
+  $('#mic').classList.add('live');
+  try { rec.start(); } catch (e) {}
+}
+function stopListening() { try { rec && rec.abort(); } catch (e) {} $('#mic').classList.remove('live'); }
+
+$('#mic').onclick = startListening;
+$('#voiceAgain').onclick = () => { stopListening(); startListening(); };
+$('#voiceCancel').onclick = () => { stopListening(); $('#voice').close(); };
+$('#voiceOk').onclick = () => {
+  stopListening();
+  const text = $('#transcript').value.trim();
+  $('#voice').close();
+  if (!text) return;
+  const p = parseGerman(text);
+  openEditor(null, {
+    title: p.title, start: p.start,
+    context: p.context || undefined,
+    remind: p.remind ?? undefined,
+    duration: p.remind === 0 && p.title === 'Wecken' ? 0 : undefined,
+  });
+};
+$('#add').onclick = () => openEditor(null);
+
+// ---------- Sprache: Ausgabe ----------
+function say(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'de-DE';
+  const v = speechSynthesis.getVoices().find((v) => v.lang && v.lang.startsWith('de'));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+$('#speakBtn').onclick = () => {
+  const now = new Date();
+  const todays = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(now) && startOf(e) >= now);
+  const tomorrow = visibleEvents().filter((e) => toDateStr(startOf(e)) === toDateStr(addDays(now, 1)));
+  const part = filter === 'all' ? '' : ' im Bereich ' + CONTEXTS[filter].label;
+  let text = todays.length
+    ? `Heute${part} noch ${todays.length === 1 ? 'ein Termin' : todays.length + ' Termine'}: ` +
+      todays.map((e) => `um ${toTimeStr(startOf(e))} ${e.title}`).join(', ') + '.'
+    : `Heute${part} steht nichts mehr an.`;
+  if (tomorrow.length) text += ` Morgen geht es um ${toTimeStr(startOf(tomorrow[0]))} los mit ${tomorrow[0].title}.`;
+  say(text);
+  toast(text);
+};
+
+// ---------- Erinnerungen ----------
+let swReg = null;
+function notifState() { return 'Notification' in window ? Notification.permission : 'unsupported'; }
+function updateBanner() {
+  const needs = Store.events.some((e) => e.remind >= 0) && notifState() === 'default';
+  $('#notifBanner').hidden = !needs;
+}
+async function askNotifPermission() {
+  if (notifState() === 'default') { try { await Notification.requestPermission(); } catch (e) {} }
+  updateBanner();
+}
+$('#enableNotif').onclick = askNotifPermission;
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.35, 0.7].forEach((t) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.2, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.3);
+    });
+  } catch (e) {}
+}
+
+async function fire(ev) {
+  const s = startOf(ev);
+  const body = `${toTimeStr(s)} Uhr · ${CONTEXTS[ev.context].label}`;
+  if (notifState() === 'granted' && swReg) {
+    try { await swReg.showNotification(ev.title, { body, icon: 'icons/icon-192.png', tag: ev.id, vibrate: [300, 150, 300, 150, 600], requireInteraction: true }); } catch (e) {}
+  }
+  if (document.visibilityState === 'visible') {
+    beep();
+    if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+    toast('🔔 ' + ev.title + ' – ' + body, true);
+    say(ev.title === 'Wecken' ? 'Guten Morgen. Zeit aufzustehen.' : `Erinnerung: ${ev.title} um ${toTimeStr(s)} Uhr.`);
+  }
+}
+
+function checkReminders() {
+  const now = Date.now();
+  for (const ev of Store.events) {
+    if (ev.remind < 0 || ev.notified) continue;
+    const s = startOf(ev).getTime();
+    if (now >= s - ev.remind * 60000 && now < s + 3600000) {
+      ev.notified = true; Store.save(); fire(ev);
+    }
+  }
+}
+
+// ---------- Kleinkram ----------
+let toastTimer;
+function toast(msg, alarm) {
+  const t = $('#toast');
+  t.textContent = msg; t.className = 'show' + (alarm ? ' alarm' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.className = ''), alarm ? 9000 : 3500);
+}
+
+document.querySelectorAll('#filter button').forEach((b) =>
+  b.addEventListener('click', () => { filter = b.dataset.f; Prefs.set('filter', filter); render(); })
+);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); checkReminders(); } });
+
+// ---------- Start ----------
+Store.load();
+render();
+updateBanner();
+checkReminders();
+setInterval(() => { checkReminders(); render(); }, 20000);
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then((r) => (swReg = r)).catch(() => {});
+}
+if ('speechSynthesis' in window) speechSynthesis.getVoices();
+</script>
+</body>
+</html>
