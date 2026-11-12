@@ -56,7 +56,9 @@ Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ 
 1. ✅ Eigener Kalender, Bereiche, Spracheingabe, Erinnerungen solange App offen
 1b. ✅ Wecker mit Nachtmodus, Wischen zwischen Ansichten
 1c. ✅ Gedanken, Weckvorschlag, Abendrückblick, Feierabend, Losfahren, Nachrichten
-2. KI-Assistent (Claude API) für freie Gespräche und Tagesplanung
+2. KI-Assistent (Claude API) – **zurückgestellt**, bis die App weiter ausgebaut ist. Plan: Haiku 5.5 für Eingaben
+   (Termine verstehen, Bereich erkennen, Gedanken sortieren), Sonnet 5.5 für Morgenbriefing/Abendrückblick;
+   geschätzt ~1,50 $/Monat. API-Schlüssel nur lokal in der App, Kostenzähler in ⚙️, pro Bereich steuerbar, was Claude sieht.
 3. ✅ Android-APK (Capacitor) mit Gerätekalender (privat + 747), nativen Benachrichtigungen, nativer Sprache
 3b. Echter Vollbild-Wecker (Klingeln bei gesperrtem Handy), Standort im Hintergrund
 5. Weitere Kanäle (Mail, Messenger) → „Nervensystem“
