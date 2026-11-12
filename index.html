@@ -143,6 +143,13 @@
     align-items: center; justify-content: center; text-align: center; padding: 30px; }
   .overlay[hidden] { display: none; }
   #night .clock { font-size: 92px; font-weight: 200; color: #6b5a44; font-variant-numeric: tabular-nums; }
+  #night .peek { opacity: 0; transition: opacity 1.2s; }
+  #night.show .peek { opacity: 1; transition: opacity .3s; }
+  #night .warn { color: #b0602a; margin-top: 18px; font-size: 15px; }
+  #night .tap { position: absolute; bottom: calc(90px + env(safe-area-inset-bottom)); color: #141210; font-size: 13px; }
+  #ring .flip { color: var(--muted); font-size: 14px; margin-top: 18px; }
+  #night .exit { pointer-events: none; }
+  #night.show .exit { pointer-events: auto; }
   #night .sub { color: #4a4036; margin-top: 8px; }
   #night .exit { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); background: none;
     border: 1px solid #2a2520; color: #6b5a44; padding: 12px 24px; border-radius: 30px; font: inherit; }
@@ -279,6 +286,12 @@
     <label for="sFile">Eigener Ton (MP3, M4A …)</label>
     <input id="sFile" type="file" accept="audio/*">
     <div class="hint" id="sFileHint"></div>
+    <label>Orte (für automatisch Office / Homeoffice)</label>
+    <div class="row">
+      <div><button type="button" class="probe" id="sOfficeLoc">🏢 Hier ist das Büro</button></div>
+      <div><button type="button" class="probe" id="sHomeLoc">🏠 Hier ist Zuhause</button></div>
+    </div>
+    <div class="hint" id="sLocHint"></div>
     <label class="chk"><input type="checkbox" id="sSpeak"> Eingaben laut bestätigen</label>
     <div class="actions">
       <button type="button" id="sCancel">Abbrechen</button>
@@ -289,9 +302,13 @@
 
 <!-- Nachtmodus -->
 <div class="overlay" id="night" hidden>
-  <div class="clock" id="nightClock"></div>
-  <div class="sub" id="nightSub"></div>
-  <button class="exit" id="nightExit">Nachtmodus beenden</button>
+  <div class="peek">
+    <div class="clock" id="nightClock"></div>
+    <div class="sub" id="nightSub"></div>
+  </div>
+  <div class="warn" id="nightWarn" hidden>🔌 Nicht am Ladekabel – bitte anschließen</div>
+  <div class="tap">Antippen zeigt die Uhr</div>
+  <button class="exit peek" id="nightExit">Nachtmodus beenden</button>
 </div>
 
 <!-- Klingeln -->
@@ -300,6 +317,7 @@
   <div class="lbl" id="ringLabel"></div>
   <button id="snoozeBtn">Schlummern · 5 Min</button>
   <button id="stopBtn">Aus</button>
+  <div class="flip" id="flipHint" hidden>oder Handy umdrehen</div>
 </div>
 
 <div class="fab">
@@ -571,7 +589,8 @@ function render() {
   $('#alarmView').hidden = view !== 'wecker';
   $('#notesView').hidden = view !== 'gedanken';
   const mode = dayMode();
-  if (mode) $('#today').insertAdjacentText('beforeend', mode === 'office' ? ' · 🏢 Office' : ' · 🏠 Homeoffice');
+  const viaLoc = (Prefs.get('locToday', null) || {}).date === toDateStr(new Date()) ? ' 📍' : '';
+  if (mode) $('#today').insertAdjacentText('beforeend', (mode === 'office' ? ' · 🏢 Office' : ' · 🏠 Homeoffice') + viaLoc);
   if (isQuiet()) $('#today').insertAdjacentHTML('beforeend', ' · <span class="quiet">🌙 Feierabend</span>');
   if (view === 'wecker') { renderWakeCard($('#wakeCard2')); renderAlarms(); return; }
   if (view === 'gedanken') { renderNotes(); return; }
@@ -1085,6 +1104,7 @@ async function ring(a) {
   $('#ringClock').textContent = toTimeStr(new Date());
   $('#ringLabel').textContent = a.label || 'Wecker';
   $('#ring').hidden = false;
+  startFlipWatch();
   startSound(soundOf(a), ringStart, () => {
     if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
     $('#ringClock').textContent = toTimeStr(new Date());
@@ -1095,6 +1115,7 @@ async function ring(a) {
   }
 }
 function stopRing(withBriefing) {
+  stopFlipWatch();
   stopSound();
   if (navigator.vibrate) navigator.vibrate(0);
   $('#ring').hidden = true;
@@ -1164,16 +1185,45 @@ function updateNight() {
   const n = nextAlarm(now);
   $('#nightSub').textContent = n ? `⏰ ${dayLabel(n.at)} ${n.alarm.time} · ${relIn(n.at - now)}` : 'Kein Wecker gestellt';
 }
+// Antippen blendet die Uhr kurz ein, sonst bleibt alles schwarz (OLED-Pixel aus)
+let peekTimer = null;
+$('#night').addEventListener('click', (e) => {
+  if (e.target.id === 'nightExit') return;
+  $('#night').classList.add('show');
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => $('#night').classList.remove('show'), 5000);
+});
+// Akku: im Nachtmodus warnen, wenn nicht geladen wird
+let battery = null;
+async function watchBattery() {
+  try {
+    if (!battery && navigator.getBattery) {
+      battery = await navigator.getBattery();
+      battery.addEventListener('chargingchange', updateBatteryWarn);
+    }
+  } catch (e) {}
+  updateBatteryWarn();
+}
+function updateBatteryWarn() {
+  const off = !!(battery && !battery.charging);
+  $('#nightWarn').hidden = !off;
+  return off;
+}
 $('#nightBtn').onclick = async () => {
   unlockAudio();
   $('#night').hidden = false;
+  $('#night').classList.add('show');
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => $('#night').classList.remove('show'), 6000);
+  await watchBattery();
   updateNight();
   nightTimer = setInterval(updateNight, 15000);
   await requestWakeLock();
   try { document.documentElement.requestFullscreen && (await document.documentElement.requestFullscreen()); } catch (e) {}
   const n = nextAlarm();
   const review = new Date().getHours() >= 17 ? eveningReview() + ' ' : '';
-  say(review + (n ? `Gute Nacht. Ich wecke dich ${dayLabel(n.at).toLowerCase()} um ${n.alarm.time} Uhr.` : 'Gute Nacht. Es ist kein Wecker gestellt.'));
+  const plug = updateBatteryWarn() ? ' Achtung: Das Handy lädt nicht. Bitte ans Ladekabel.' : '';
+  say(review + (n ? `Gute Nacht. Ich wecke dich ${dayLabel(n.at).toLowerCase()} um ${n.alarm.time} Uhr.` : 'Gute Nacht. Es ist kein Wecker gestellt.') + plug);
 };
 $('#nightExit').onclick = () => {
   $('#night').hidden = true;
@@ -1243,6 +1293,8 @@ $('#sFile').onchange = async () => {
 };
 // Office oder Homeoffice?
 function dayMode(d = new Date()) {
+  const loc = Prefs.get('locToday', null);
+  if (loc && loc.date === toDateStr(d) && (d.getDay() % 6 !== 0 || loc.mode === 'office')) return loc.mode;
   const w = d.getDay();
   if (w === 0 || w === 6) return null;
   return Settings.officeDays.includes(w) ? 'office' : 'home';
@@ -1467,6 +1519,78 @@ $('#mSms').onclick = () => {
   location.href = url;
 };
 
+// ---------- Sensor: Handy umdrehen = Wecker aus ----------
+let flip = null;
+function onMotion(e) {
+  const g = e.accelerationIncludingGravity;
+  if (!flip || !g || g.z == null) return;
+  if (g.z > 6) flip.upSeen = true;               // Display zeigt nach oben
+  if (flip.upSeen && g.z < -7) {                 // Display zeigt nach unten
+    if (!flip.downSince) flip.downSince = Date.now();
+    else if (Date.now() - flip.downSince > 500) { toast('Wecker aus'); stopRing(true); }
+  } else flip.downSince = 0;
+}
+function startFlipWatch() {
+  if (!('DeviceMotionEvent' in window)) return;
+  flip = { upSeen: false, downSince: 0 };
+  window.addEventListener('devicemotion', onMotion);
+  $('#flipHint').hidden = false;
+}
+function stopFlipWatch() {
+  window.removeEventListener('devicemotion', onMotion);
+  flip = null;
+}
+
+// ---------- Sensor: Standort → Office / Homeoffice ----------
+const Places = {
+  get() { return Prefs.get('places', {}); },
+  set(k, pos) { const p = this.get(); p[k] = pos; Prefs.set('places', p); },
+};
+function distM(a, b) {
+  const R = 6371000, r = (x) => (x * Math.PI) / 180;
+  const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lon - a.lon) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function getPos() {
+  return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
+    (p) => res({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }), rej,
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }));
+}
+async function savePlace(k) {
+  $('#sLocHint').textContent = 'Standort wird ermittelt …';
+  try {
+    const p = await getPos();
+    Places.set(k, p);
+    $('#sLocHint').textContent = `${k === 'office' ? 'Büro' : 'Zuhause'} gespeichert (Genauigkeit ±${Math.round(p.acc)} m).`;
+    checkLocation(true);
+  } catch (e) {
+    $('#sLocHint').textContent = 'Kein Standort – bitte Standortzugriff für die App erlauben.';
+  }
+}
+$('#sOfficeLoc').onclick = () => savePlace('office');
+$('#sHomeLoc').onclick = () => savePlace('home');
+
+let lastLocCheck = 0;
+async function checkLocation(force) {
+  const pl = Places.get();
+  if ((!pl.office && !pl.home) || !navigator.geolocation) return;
+  if (!force && Date.now() - lastLocCheck < 5 * 60000) return;
+  lastLocCheck = Date.now();
+  try {
+    const p = await getPos();
+    const near = (place) => place && distM(p, place) < 250 + Math.min(p.acc, 300);
+    const mode = near(pl.office) ? 'office' : near(pl.home) ? 'home' : null;
+    if (!mode) return; // unterwegs: Stand bleibt
+    const today = toDateStr(new Date());
+    const prev = Prefs.get('locToday', null);
+    if (prev && prev.date === today && (prev.mode === mode || prev.mode === 'office')) return; // wer heute im Büro war, hatte einen Office-Tag
+    Prefs.set('locToday', { date: today, mode });
+    if (mode === 'office') { toast('📍 Im Büro angekommen – Office-Tag'); if (Settings.speakConfirm) say('Willkommen im Office.'); }
+    render();
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkLocation(); });
+
 // ---------- Kleinkram ----------
 let toastTimer;
 function toast(msg, alarm) {
@@ -1526,7 +1650,8 @@ Notes.load();
 render();
 updateBanner();
 checkReminders();
-setInterval(() => { checkReminders(); render(); }, 20000);
+setInterval(() => { checkReminders(); render(); checkLocation(); }, 20000);
+checkLocation();
 setInterval(checkAlarms, 3000);
 checkAlarms();
 if ('serviceWorker' in navigator) {

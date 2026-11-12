@@ -19,12 +19,15 @@ Entwickelt wird überwiegend vom Handy aus über Claude Code.
 ## Ansichten
 Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ Wecker. ⚙️ Einstellungen im Header.
 
-## Architektur (v0.4)
+## Architektur (v0.5)
 - Reine Web-App (PWA), kein Build-Schritt: `index.html` (UI + Logik), `sw.js` (Offline + Benachrichtigungen), `manifest.json`.
 - Daten lokal in `localStorage` über das `Store`-Objekt. Der Store ist bewusst gekapselt,
   damit später ein Google-Calendar-Adapter (ein Kalender pro Bereich) eingesetzt werden kann.
 - Wecker separat in `Alarms` (einmalig oder an Wochentagen), Nachtmodus mit Wake Lock, Klingeln mit Schlummern;
   nach „Aus“ folgt ein gesprochenes Morgenbriefing aus dem Kalender. „Weck mich …“ per Sprache legt einen Wecker an.
+- Sensoren: Beim Klingeln Handy umdrehen (devicemotion, z < −7 nach vorher > 6) = Aus. Standort: Büro/Zuhause in
+  Settings speichern (`Places`), `checkLocation()` alle 5 Min bei offener App → `Prefs.locToday` übersteuert `dayMode()`
+  (📍 im Header). Nachtmodus komplett schwarz (Uhr nur bei Antippen), Wake Lock bleibt aktiv, Akku-Warnung ohne Ladekabel.
 - Wecktöne: synthetisch (Klassisch, Sanfte Glocke, Marimba, Aufsteigend) über Web Audio, oder eigene Datei (IndexedDB
   `SoundDB`). Standardton in Settings, pro Wecker überschreibbar; werden langsam lauter.
 - `Notes`: geparkte Gedanken (Sprachnotiz, Bereich, erledigt, → Termin umwandeln).
@@ -45,4 +48,5 @@ Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · ⏰ 
 5. Weitere Kanäle (Mail, Messenger) → „Nervensystem“
 
 ## Bekannte Grenzen
+- Display wirklich aus geht als Web-App nicht (Seite wird pausiert) – deshalb schwarzer Bildschirm mit Wake Lock.
 - Als Web-App kann Android Erinnerungen bei geschlossener App nicht garantieren; echtes Wecken erst mit Schritt 3.
