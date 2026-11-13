@@ -1,5 +1,5 @@
 // Service Worker: Offline-Fähigkeit + Benachrichtigungen
-const CACHE = 'zentrale-v9';
+const CACHE = 'zentrale-v10';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

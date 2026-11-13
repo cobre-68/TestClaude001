@@ -36,7 +36,11 @@ public class AlarmService extends Service {
     private MediaPlayer player;
     private Vibrator vibrator;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private float volume = 0.15f;
+    private float volume = START_VOLUME;
+    private long ringStart = 0;
+    static final float START_VOLUME = 0.02f;   // fast unhörbar
+    static final long RAMP_MS = 120_000L;      // in 2 Minuten auf volle Lautstärke
+    static final long VIBRATE_AFTER_MS = 60_000L;
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -60,8 +64,9 @@ public class AlarmService extends Service {
         }
         if (!isRinging) {
             isRinging = true;
+            ringStart = System.currentTimeMillis();
             startSound();
-            startVibration();
+            handler.postDelayed(this::startVibration, VIBRATE_AFTER_MS); // Vibration erst nach einer Minute
             handler.postDelayed(() -> finishRing(false), 10 * 60 * 1000L); // nach 10 Min automatisch aus
         }
         try {
@@ -128,15 +133,17 @@ public class AlarmService extends Service {
         }
         player.setVolume(volume, volume);
         player.start();
-        handler.postDelayed(ramp, 3000);
+        handler.postDelayed(ramp, 1000);
     }
 
     private final Runnable ramp = new Runnable() {
         @Override public void run() {
             if (player == null) return;
-            volume = Math.min(1f, volume + 0.05f);
+            // exponentiell (fürs Ohr gleichmäßig): 0,02 → 1,0 über RAMP_MS
+            double f = Math.min(1.0, (System.currentTimeMillis() - ringStart) / (double) RAMP_MS);
+            volume = (float) (START_VOLUME * Math.pow(1.0 / START_VOLUME, f));
             player.setVolume(volume, volume);
-            if (volume < 1f) handler.postDelayed(this, 3000);
+            if (f < 1.0) handler.postDelayed(this, 1000);
         }
     };
 

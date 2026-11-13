@@ -19,9 +19,9 @@ Entwickelt wird überwiegend vom Handy aus über Claude Code.
 ## Ansichten
 Oben (und per Wischen): Alle · Privat · Geschäftlich · 💭 Gedanken · 👥 Personen · ⏰ Wecker.
 Kalender-Ansichten umschaltbar: Liste · Tag (Zeitleiste mit Wegzeit-Blöcken) · Woche (`calMode`).
-Header: 🔊 vorlesen · 🔈/🔇 Stumm-Modus (`Settings.mute` → `showCard()` statt Sprache) · ⚙️ Einstellungen.
+Header: 🔊 vorlesen · 🔈/🔇 Stumm-Modus (`Settings.mute` → `showCard()` statt Sprache; **Standard: stumm/Text**) · ⚙️ Einstellungen.
 
-## Architektur (v0.7 – Web + Android)
+## Architektur (v0.8 – Web + Android)
 - **Android-App (Capacitor 8):** `android/`, appId `de.martinkupfer.zentrale`. Web-Dateien werden per
   `scripts/build-web.js` nach `www/` kopiert, `npx cap sync android`. APK baut `.github/workflows/android.yml` bei jedem
   Push und hängt sie als Release `apk-latest` an (Zentrale.apk). Signierschlüssel `android/app/zentrale.keystore`
@@ -34,7 +34,8 @@ Header: 🔊 vorlesen · 🔈/🔇 Stumm-Modus (`Settings.mute` → `showCard()`
   geschäftliche Termine bleiben lokal in der App.
 - **Nativer Vollbild-Wecker** (eigenes Plugin `ZAlarm`, Java in `android/app/src/main/java/de/martinkupfer/zentrale/`):
   `AlarmScheduler` (AlarmManager.setAlarmClock, Neuplanung nach Neustart via `BootReceiver`) → `AlarmReceiver` →
-  `AlarmService` (Vordergrund-Dienst systemExempted, Dauerton `res/raw/wecker.wav` lauter werdend, Vibration,
+  `AlarmService` (Vordergrund-Dienst systemExempted, Dauerton `res/raw/wecker.wav` startet fast unhörbar (0,02) und wird
+  exponentiell über 2 Min lauter, Vibration erst nach 1 Min,
   Vollbild-Benachrichtigung) → `AlarmActivity` (über Sperrbildschirm, Schlummern/Aus, Umdrehen = Aus).
   Web plant über `syncNativeAlarms()`; nach „Aus“ liefert `ZA.consumeStop()` den Zeitpunkt → Morgenbriefing.
 - Native Benachrichtigungen (`syncNativeNotifs`): Erinnerungen lokaler Termine, Losfahren – für 7 Tage im Voraus geplant, auch bei geschlossener App.
@@ -57,6 +58,9 @@ Header: 🔊 vorlesen · 🔈/🔇 Stumm-Modus (`Settings.mute` → `showCard()`
 - **Fahrzeit** (`updateRoutes`, `travelOf(ev)`): manuelle Wegzeit hat Vorrang, sonst automatisch – mit TomTom-Schlüssel
   (⚙️) inkl. Live-Verkehr, sonst OSRM ohne Verkehr (+20 %, „≈“). Von aktuellem Standort (`Prefs.lastPos`) oder Zuhause.
 - **Datensicherung**: alle `zentrale.*`-Daten als JSON exportieren (Android: Teilen → z. B. Drive) / einspielen.
+- **Priorität** je Termin (`prio`: low | normal | high), auch für Kalendertermine (lokal in `devExtras`). Sprache:
+  „wichtig/dringend“ → hoch, „unwichtig/optional“ → niedrig. Wichtiges: ❗ in allen Ansichten, im Morgenbriefing
+  genannt, durchbricht den Feierabend. Niedriges wird abgeschwächt angezeigt.
 - `Notes`: geparkte Gedanken (Sprachnotiz, Bereich, erledigt, → Termin umwandeln).
 - `Settings`: Feierabend-Zeiten (geschäftliche Erinnerungen stumm), Wochenende frei, Aufsteh-Vorlauf, Sprachbestätigung.
 - Verknüpfungen: Weckvorschlag aus erstem Termin morgen (Vorlauf + Wegzeit), Abendrückblick (🔊 ab 18 Uhr, beim

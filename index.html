@@ -121,6 +121,14 @@
   @keyframes shake { 25% { transform: translateX(-6px) } 75% { transform: translateX(6px) } }
   .seg button { font-size: 13px; }
   .seg button[data-f="personen"] { flex: .55; }
+  .ev.high { border-color: rgba(255,107,107,.55); }
+  .ev.high .title { font-weight: 600; }
+  .ev.low { opacity: .65; }
+  .block.high { box-shadow: inset 0 0 0 1px rgba(255,107,107,.6); }
+  .block.low { opacity: .6; }
+  .prio input[value="low"]:checked + span { border-color: var(--muted); color: var(--text); background: rgba(255,255,255,.04); }
+  .prio input[value="normal"]:checked + span { border-color: var(--text); color: var(--text); background: rgba(255,255,255,.06); }
+  .prio input[value="high"]:checked + span { border-color: #ff6b6b; color: #ff8b8b; background: rgba(255,107,107,.1); }
   .modes { display: flex; gap: 6px; margin-bottom: 14px; }
   .modes button { flex: 1; padding: 7px; border-radius: 20px; border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 13px; }
   .modes button.on { background: var(--panel2); color: var(--text); }
@@ -472,6 +480,12 @@
       <label><input type="radio" name="ctx" value="privat"><span>Privat</span></label>
       <label><input type="radio" name="ctx" value="business"><span>Geschäftlich</span></label>
     </div>
+    <label>Priorität</label>
+    <div class="ctx prio">
+      <label><input type="radio" name="prio" value="low"><span>Niedrig</span></label>
+      <label><input type="radio" name="prio" value="normal"><span>Normal</span></label>
+      <label><input type="radio" name="prio" value="high"><span>❗ Wichtig</span></label>
+    </div>
     <label for="fNote">Notiz</label>
     <textarea id="fNote" rows="2"></textarea>
     <div id="fWarn" hidden></div>
@@ -590,6 +604,11 @@ function parseGerman(input) {
   // Bereich
   if (has(R('geschäftlich|beruflich|747|büro|kunden?|meeting|dreh|agentur'))) context = 'business';
   if (has(R('privat|privater|private'))) context = 'privat';
+  // Priorität
+  let prio = null;
+  if (has(R('unwichtig|optional|niedrige\\s+priorität|wenn\\s+zeit\\s+ist'))) prio = 'low';
+  else if (has(R('wichtig|dringend|hohe\\s+priorität|priorität\\s+hoch'))) prio = 'high';
+  cut(R('unwichtig|optional|niedrige\\s+priorität|wenn\\s+zeit\\s+ist|wichtig|dringend|hohe\\s+priorität|priorität\\s+hoch'));
   cut(R('geschäftlich|beruflich|privat|privater|private'));
 
   // Wecken
@@ -655,7 +674,8 @@ function parseGerman(input) {
       const re = R('(?:am\\s+|nächsten\\s+|kommenden\\s+)?' + w);
       if (has(re)) {
         let diff = (i - now.getDay() + 7) % 7;
-        if (diff === 0) diff = 7;
+        // Gleicher Wochentag: heute, wenn die Uhrzeit noch kommt – sonst nächste Woche
+        if (diff === 0 && !(hh !== null && (hh > now.getHours() || (hh === now.getHours() && mm > now.getMinutes())))) diff = 7;
         date = addDays(today, diff);
         cut(re);
       }
@@ -681,7 +701,7 @@ function parseGerman(input) {
   title = title.charAt(0).toUpperCase() + title.slice(1);
 
   const start = new Date(date); start.setHours(hh, mm, 0, 0);
-  return { title, start, context, remind, wake, hasDate, hasTime };
+  return { title, start, context, remind, wake, hasDate, hasTime, prio };
 }
 
 // ---------- UI ----------
@@ -744,7 +764,7 @@ function render() {
       <div class="lbl">${running ? 'Läuft gerade' : 'Als Nächstes · ' + relIn(s - now)}</div>
       <div class="t"></div>
       <div class="s">${dayLabel(s)}, ${toTimeStr(s)} Uhr · ${CONTEXTS[next.context].label}</div></div>`;
-    nextEl.querySelector('.t').textContent = next.title;
+    nextEl.querySelector('.t').textContent = (next.prio === 'high' ? '❗ ' : '') + next.title;
     nextEl.firstChild.onclick = () => openEditor(next);
   } else nextEl.innerHTML = '';
 
@@ -766,11 +786,11 @@ function render() {
     }
     const el = document.createElement('div');
     const end = new Date(s.getTime() + (e.duration || 0) * 60000);
-    el.className = 'ev' + (end < now ? ' past' : '');
+    el.className = 'ev' + (end < now ? ' past' : '') + (e.prio === 'high' ? ' high' : e.prio === 'low' ? ' low' : '');
     el.innerHTML = `<div class="bar" style="background:${CONTEXTS[e.context].color}"></div>
       <div class="time">${toTimeStr(s)}${e.duration ? `<small>${toTimeStr(end)}</small>` : ''}</div>
       <div class="body"><div class="title"></div><div class="meta"></div></div>`;
-    el.querySelector('.title').textContent = e.title;
+    el.querySelector('.title').textContent = (e.prio === 'high' ? '❗ ' : '') + e.title;
     const meta = [CONTEXTS[e.context].label];
     if (e.remind >= 0) meta.push('🔔');
     if (travelLabel(e)) meta.push(travelLabel(e));
@@ -802,6 +822,7 @@ function openEditor(ev, draft) {
   $('#fNote').value = d.note || '';
   $('#fLoc').value = d.location || '';
   $('#fTravel').value = String(d.travel || 0);
+  setPrioRadio(d.prio || 'normal');
   const ctx = d.context || (filter !== 'all' ? filter : Prefs.get('lastCtx', 'privat'));
   document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === ctx));
   $('#delBtn').hidden = !ev || !!(ev && ev.series);
@@ -833,14 +854,15 @@ $('#form').addEventListener('submit', async (e) => {
     note: $('#fNote').value.trim(),
     location: $('#fLoc').value.trim(),
     travel: +$('#fTravel').value,
+    prio: document.querySelector('input[name=prio]:checked')?.value || 'normal',
     notified: false,
     leaveNotified: false,
   };
   $('#editor').close();
   if (orig && orig.series) {
     // Serientermin: nur die Wegzeit merken, den Termin selbst im Kalender ändern
-    const ex = Device.extras(); ex[orig.devId] = { travel: ev.travel }; Prefs.set('devExtras', ex);
-    orig.travel = ev.travel; render(); syncNativeNotifs();
+    const ex = Device.extras(); ex[orig.devId] = { travel: ev.travel, prio: ev.prio }; Prefs.set('devExtras', ex);
+    orig.travel = ev.travel; orig.prio = ev.prio; render(); syncNativeNotifs();
     toast('Wegzeit gespeichert – Serientermine bitte im Kalender ändern');
     return;
   }
@@ -867,6 +889,7 @@ $('#delBtn').onclick = async () => {
   render();
 };
 
+function setPrioRadio(v) { document.querySelectorAll('input[name=prio]').forEach((r) => (r.checked = r.value === v)); }
 // ---------- Mitdenken im Termin-Editor ----------
 // 1) Datum/Uhrzeit aus dem diktierten oder getippten Titel erkennen
 // 2) Plausibilität prüfen: Vergangenheit, Überschneidungen, Wegzeit, Arbeitszeit, Nachtzeit
@@ -903,6 +926,7 @@ function onTitleInput() {
       $('#fTime').value = toTimeStr(p.start);
     }
     if (p.context) document.querySelectorAll('input[name=ctx]').forEach((r) => (r.checked = r.value === p.context));
+    if (p.prio) setPrioRadio(p.prio);
     parsedTitle = p.title;
     $('#fDetect').hidden = false;
     $('#fDetect').textContent = `🗓 Erkannt: ${dayLabel(p.start)}, ${toTimeStr(p.start)} Uhr` +
@@ -1062,6 +1086,7 @@ $('#voiceOk').onclick = () => {
     title: p.title, start: p.start,
     context: p.context || undefined,
     remind: p.remind ?? undefined,
+    prio: p.prio || undefined,
     duration: p.remind === 0 && p.title === 'Wecken' ? 0 : undefined,
   });
 };
@@ -1149,7 +1174,7 @@ function checkReminders() {
   const quiet = isQuiet();
   for (const ev of allEvents()) {
     const s = startOf(ev).getTime();
-    const silent = quiet && ev.context === 'business';
+    const silent = quiet && ev.context === 'business' && ev.prio !== 'high';
     if (travelOf(ev) > 0 && !ev.leaveNotified && now >= s - (travelOf(ev) + 5) * 60000 && now < s) {
       ev.leaveNotified = true; Store.save(); if (!silent) fireLeave(ev);
     }
@@ -1364,16 +1389,18 @@ let customUrl = null;
 SoundDB.get().then((b) => { if (b) customUrl = URL.createObjectURL(b); });
 
 let ringTimer = null, ringing = null, ringStart = 0, ringAudio = null, previewTimer = null;
-const rampVol = (since) => Math.min(0.08 + (Date.now() - since) / 60000 * 0.3, 0.5); // wird langsam lauter
+// Ganz leise starten, in 2 Minuten auf volle Lautstärke (exponentiell, fürs Ohr gleichmäßig)
+const rampF = (since) => Math.min(1, (Date.now() - since) / 120000);
+const rampVol = (since) => 0.01 * Math.pow(50, rampF(since)); // 0,01 → 0,5
 
 function startSound(id, since, onTick) {
   stopSound();
   unlockAudio();
   if (id === 'datei' && customUrl) {
     ringAudio = new Audio(customUrl);
-    ringAudio.loop = true; ringAudio.volume = 0.25;
+    ringAudio.loop = true; ringAudio.volume = 0.02;
     ringAudio.play().catch(() => {});
-    ringTimer = setInterval(() => { ringAudio.volume = Math.min(1, 0.25 + (Date.now() - since) / 60000 * 0.75); onTick && onTick(); }, 1000);
+    ringTimer = setInterval(() => { ringAudio.volume = 0.02 * Math.pow(50, rampF(since)); onTick && onTick(); }, 1000);
     return;
   }
   const pat = PATTERNS[id] || PATTERNS.klassisch;
@@ -1387,7 +1414,7 @@ function stopSound() {
   if (ringAudio) { ringAudio.pause(); ringAudio = null; }
 }
 function previewSound(id) {
-  startSound(id, Date.now() - 60000); // Probe in mittlerer Lautstärke
+  startSound(id, Date.now() - 95000); // Probe in gut hörbarer Lautstärke
   previewTimer = setTimeout(stopSound, id === 'datei' ? 6000 : (PATTERNS[id] || PATTERNS.klassisch).every * 2);
 }
 const soundOf = (a) => (a && a.sound) || Settings.sound || 'klassisch';
@@ -1399,7 +1426,7 @@ async function ring(a) {
   $('#ring').hidden = false;
   startFlipWatch();
   startSound(soundOf(a), ringStart, () => {
-    if (navigator.vibrate) navigator.vibrate([400, 200, 400]);
+    if (navigator.vibrate && Date.now() - ringStart > 60000) navigator.vibrate([400, 200, 400]);
     $('#ringClock').textContent = toTimeStr(new Date());
     if (Date.now() - ringStart > 10 * 60000) stopRing(false); // nach 10 Min automatisch aus
   });
@@ -1447,6 +1474,8 @@ function morningBriefing() {
     if (b) parts.push(b === 1 ? 'einen geschäftlichen' : (NUM[b] || b) + ' geschäftliche');
     if (p) parts.push(p === 1 ? 'einen privaten' : (NUM[p] || p) + ' private');
     text += `Du hast heute ${parts.join(' und ')} Termin${todays.length > 1 ? 'e' : ''}. Der erste: um ${toTimeStr(startOf(todays[0]))} ${todays[0].title}.`;
+    const imp = todays.filter((e) => e.prio === 'high');
+    if (imp.length) text += ` Wichtig: ${imp.map((e) => `${e.title} um ${toTimeStr(startOf(e))}`).join(', ')}.`;
   }
   say(text);
   toast(text);
@@ -1539,9 +1568,11 @@ document.addEventListener('visibilitychange', () => {
 // ---------- Einstellungen ----------
 const Settings = Object.assign(
   { quietOn: true, quietFrom: '19:00', quietTo: '08:00', weekendOff: true, wakeBuffer: 75, speakConfirm: true,
-    officeDays: [2, 3, 4], sound: 'klassisch', mute: false, autoRoute: true, tomtomKey: '' },
+    officeDays: [2, 3, 4], sound: 'klassisch', mute: true, autoRoute: true, tomtomKey: '' },
   Prefs.get('settings', {})
 );
+// Einmalig: Sprachausgabe für bestehende Installationen auf „aus“ (Text) stellen
+if (!Prefs.get('muteDefaultV8', false)) { Settings.mute = true; Prefs.set('settings', Settings); Prefs.set('muteDefaultV8', true); }
 const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
 
 // Feierabend: geschäftliche Erinnerungen bleiben stumm
@@ -2014,7 +2045,7 @@ async function syncDeviceCalendar(force) {
           title: e.title || '(ohne Titel)', start: `${toDateStr(s)}T${e.isAllDay ? '00:00' : toTimeStr(s)}`,
           duration: e.isAllDay ? 0 : Math.max(0, Math.round((e.endDate - e.startDate) / 60000)),
           context: m[e.calendarId], location: e.location || '', note: '',
-          remind: -1, travel: (ex[e.id] && ex[e.id].travel) || 0,
+          remind: -1, travel: (ex[e.id] && ex[e.id].travel) || 0, prio: (ex[e.id] && ex[e.id].prio) || 'normal',
           notified: true, leaveNotified: !!prev.leaveNotified,
         };
       });
@@ -2031,9 +2062,12 @@ async function saveToDevice(ev) {
   const opts = { title: ev.title, calendarId: cal, startDate: s, endDate: s + Math.max(ev.duration, 15) * 60000,
     location: ev.location || undefined, description: ev.note || undefined, alerts: ev.remind >= 0 ? [-ev.remind] : [] };
   if (ev.devId) await NP.cal.modifyEvent({ id: ev.devId, ...opts });
-  else await NP.cal.createEvent(opts);
+  else {
+    const r = await NP.cal.createEvent(opts);
+    if (r && r.id) { const ex0 = Device.extras(); ex0[r.id] = { travel: ev.travel || 0, prio: ev.prio || 'normal' }; Prefs.set('devExtras', ex0); }
+  }
   const ex = Device.extras();
-  if (ev.devId) { ex[ev.devId] = { travel: ev.travel || 0 }; Prefs.set('devExtras', ex); }
+  if (ev.devId) { ex[ev.devId] = { travel: ev.travel || 0, prio: ev.prio || 'normal' }; Prefs.set('devExtras', ex); }
   await syncDeviceCalendar(true);
   return true;
 }
@@ -2066,7 +2100,7 @@ async function syncNativeNotifs() {
   for (const ev of allEvents()) {
     const s = startOf(ev);
     if (s < now || s > horizon) continue;
-    const silent = (d) => ev.context === 'business' && isQuiet(d);
+    const silent = (d) => ev.context === 'business' && ev.prio !== 'high' && isQuiet(d);
     if (!ev.external && ev.remind >= 0) {
       const at = new Date(s.getTime() - ev.remind * 60000);
       if (at > now && !silent(at)) plan.push({ at, ch: 'termine', title: ev.title, body: `${toTimeStr(s)} Uhr · ${CONTEXTS[ev.context].label}` });
@@ -2559,7 +2593,8 @@ function renderDay() {
     b.style.borderLeftColor = CONTEXTS[it.e.context].color;
     const w = eventWx(it.e);
     b.innerHTML = '<b></b><small></small>';
-    b.querySelector('b').textContent = `${toTimeStr(startOf(it.e))} ${it.e.title}`;
+    b.querySelector('b').textContent = `${it.e.prio === 'high' ? '❗ ' : ''}${toTimeStr(startOf(it.e))} ${it.e.title}`;
+    if (it.e.prio === 'high') b.classList.add('high'); else if (it.e.prio === 'low') b.classList.add('low');
     b.querySelector('small').textContent = [it.e.location && '📍 ' + it.e.location, it.e.location && wxShort(w)].filter(Boolean).join(' · ');
     b.onclick = (ev) => { ev.stopPropagation(); openEditor(it.e); };
     tl.appendChild(b);
@@ -2598,7 +2633,7 @@ function renderWeek() {
     const ls = row.querySelector('.wlist');
     if (!evs.length) ls.textContent = 'frei';
     else {
-      ls.textContent = evs.slice(0, 3).map((e) => (e.allDay ? '' : toTimeStr(startOf(e)) + ' ') + e.title).join(' · ') + (evs.length > 3 ? ` · +${evs.length - 3}` : '');
+      ls.textContent = evs.slice(0, 3).map((e) => (e.allDay ? '' : toTimeStr(startOf(e)) + ' ') + (e.prio === 'high' ? '❗' : '') + e.title).join(' · ') + (evs.length > 3 ? ` · +${evs.length - 3}` : '');
     }
     row.onclick = () => { dayCursor = d; calMode = 'day'; Prefs.set('calMode', 'day'); render(); };
     wk.appendChild(row);
